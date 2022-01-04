@@ -1,21 +1,16 @@
-from datetime import datetime, timedelta
-import logging
-import operator
-import json
-import itertools
 import http.client
+import json
+import logging
 import urllib.parse
+from datetime import timedelta
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import (CONF_NAME, STATE_UNKNOWN)
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
-
-import homeassistant.helpers.config_validation as cv
 
 __version__ = '0.0.2'
 
@@ -45,30 +40,31 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
+# noinspection PyUnusedLocal
 def setup_platform(hass, config, add_entities, discovery_info=None):
-
     name = config.get(CONF_NAME)
     overeenkomst_id = config.get(CONF_OVEREENKOMST_ID)
     username = config.get(CONF_USERNAME)
     password = config.get(CONF_PASSWORD)
 
-    greenchoice_api = GreenchoiceApiData(overeenkomst_id,username,password)
+    greenchoice_api = GreenchoiceApiData(overeenkomst_id, username, password)
 
     greenchoice_api.update()
 
     if greenchoice_api is None:
         raise PlatformNotReady
 
-    sensors = []
-    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentGas"))
-    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyDay"))
-    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyNight"))
-    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyTotal"))
+    sensors = [
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentGas"),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyDay"),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyNight"),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyTotal")
+    ]
     add_entities(sensors, True)
 
 
 class GreenchoiceSensor(Entity):
-    def __init__(self, greenchoice_api, name, overeenkomst_id, username, password, measurement_type,):
+    def __init__(self, greenchoice_api, name, overeenkomst_id, username, password, measurement_type, ):
         self._json_data = greenchoice_api
         self._name = name
         self._overeenkomst_id = overeenkomst_id
@@ -103,7 +99,7 @@ class GreenchoiceSensor(Entity):
 
     @property
     def state(self):
-        return self._state   
+        return self._state
 
     @property
     def measurement_type(self):
@@ -116,11 +112,11 @@ class GreenchoiceSensor(Entity):
     @property
     def unit_of_measurement(self):
         return self._unit_of_measurement
-        
+
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        return{
+        return {
             ATTR_MEASUREMENT_DATE: self._measurement_date,
             ATTR_UNIT_OF_MEASUREMENT: self._unit_of_measurement
         }
@@ -143,7 +139,7 @@ class GreenchoiceSensor(Entity):
         else:
             self._state = data[self._measurement_type]
             self._measurement_date = data["measurementDate"]
-          
+
         if self._measurement_type == "currentEnergyNight":
             self._icon = 'mdi:weather-sunset-down'
             self._name = 'currentEnergyNight'
@@ -170,7 +166,8 @@ class GreenchoiceApiData:
         self.token = ""
         self._tokenheaders = {
             'Content-Type': "application/x-www-form-urlencoded",
-            'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
+            'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46"
+                          "(KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
             'Host': "app.greenchoice.nl"
         }
         self._tokenquery = urllib.parse.urlencode({
@@ -187,7 +184,7 @@ class GreenchoiceApiData:
 
         try:
             response = http.client.HTTPSConnection(self._resource, timeout=10)
-            response.request("POST", "/token", body = self._tokenquery, headers = self._tokenheaders)
+            response.request("POST", "/token", body=self._tokenquery, headers=self._tokenheaders)
             json_result = json.loads(response.getresponse().read().decode('utf-8'))
             _LOGGER.debug("token json_response=%s", json_result)
 
@@ -196,16 +193,22 @@ class GreenchoiceApiData:
 
                 try:
                     response = http.client.HTTPSConnection(self._resource, timeout=10)
-                    response.request("GET", "/api/v2/meterstanden/getstanden?overeenkomstid=" + self._overeenkomst_id, headers = {'Authorization': "Bearer "+self.token})
+                    response.request("GET", "/api/v2/meterstanden/getstanden?overeenkomstid=" + self._overeenkomst_id,
+                                     headers={'Authorization': "Bearer " + self.token})
                     json_result = json.loads(response.getresponse().read().decode('utf-8'))
                     _LOGGER.debug("getstanden json_response=%s", json_result)
 
-                    currentEnergy = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 1]
-                    currentGas = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 3]
-                    self.result["currentEnergyNight"] = 0 if len(currentEnergy) == 0 else currentEnergy[0]["MeterstandenOutput"][0]["Laag"]
-                    self.result["currentEnergyDay"] = 0 if len(currentEnergy) == 0 else currentEnergy[0]["MeterstandenOutput"][0]["Hoog"]
-                    self.result["currentEnergyTotal"] = 0 if len(currentEnergy) == 0 else currentEnergy[0]["MeterstandenOutput"][0]["Hoog"] + currentEnergy[0]["MeterstandenOutput"][0]["Laag"]
-                    self.result["currentGas"] = 0 if len(currentGas) == 0 else currentGas[0]["MeterstandenOutput"][0]["Hoog"]
+                    current_energy = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 1]
+                    current_gas = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 3]
+                    self.result["currentEnergyNight"] = 0 if len(current_energy) == 0 else \
+                        current_energy[0]["MeterstandenOutput"][0]["Laag"]
+                    self.result["currentEnergyDay"] = 0 if len(current_energy) == 0 else \
+                        current_energy[0]["MeterstandenOutput"][0]["Hoog"]
+                    self.result["currentEnergyTotal"] = 0 if len(current_energy) == 0 else \
+                        current_energy[0]["MeterstandenOutput"][0]["Hoog"] + current_energy[0]["MeterstandenOutput"][0][
+                            "Laag"]
+                    self.result["currentGas"] = 0 if len(current_gas) == 0 else current_gas[0]["MeterstandenOutput"][0][
+                        "Hoog"]
                     self.result["measurementDate"] = json_result[0]["DatumInvoer"]
                 except http.client.HTTPException:
                     _LOGGER.error("Could not retrieve current numbers.")
