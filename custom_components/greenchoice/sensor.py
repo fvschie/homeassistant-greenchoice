@@ -1,7 +1,9 @@
 import http.client
 import json
 import logging
-import urllib.parse
+import bs4
+from urllib.parse import urlparse, parse_qs
+import requests
 from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
@@ -15,7 +17,7 @@ from homeassistant.util import Throttle
 __version__ = '0.0.2'
 
 _LOGGER = logging.getLogger(__name__)
-_RESOURCE = 'app.greenchoice.nl'
+_RESOURCE = 'https://mijn.greenchoice.nl'
 
 CONF_OVEREENKOMST_ID = 'overeenkomst_id'
 CONF_USERNAME = 'username'
@@ -61,6 +63,36 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyTotal')
     ]
     add_entities(sensors, True)
+
+
+def _get_verification_token(html_txt: str):
+    soup = bs4.BeautifulSoup(html_txt, 'html.parser')
+    token_elem = soup.find('input', {'name': '__RequestVerificationToken'})
+
+    return token_elem.attrs.get('value')
+
+
+def _get_oidc_params(html_txt: str):
+    soup = bs4.BeautifulSoup(html_txt, 'html.parser')
+
+    code_elem = soup.find('input', {'name': 'code'})
+    scope_elem = soup.find('input', {'name': 'scope'})
+    state_elem = soup.find('input', {'name': 'state'})
+    session_state_elem = soup.find('input', {'name': 'session_state'})
+
+    if not (code_elem and scope_elem and state_elem and session_state_elem):
+        raise LoginError('Login failed, check your credentials?')
+
+    return {
+        'code': code_elem.attrs.get('value'),
+        'scope': scope_elem.attrs.get('value').replace(' ', '+'),
+        'state': state_elem.attrs.get('value'),
+        'session_state': session_state_elem.attrs.get('value')
+    }
+
+
+class LoginError(Exception):
+    pass
 
 
 class GreenchoiceSensor(Entity):
@@ -162,65 +194,79 @@ class GreenchoiceApiData:
     def __init__(self, overeenkomst_id, username, password):
         self._resource = _RESOURCE
         self._overeenkomst_id = overeenkomst_id
+        self._username = username
+        self._password = password
+
         self.result = {}
-        self.token = ''
-        self._tokenheaders = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46'
-                          '(KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3',
-            'Host': 'app.greenchoice.nl'
+        self.session = requests.Session()
+
+    def _activate_session(self):
+        _LOGGER.info('Retrieving login cookies')
+        _LOGGER.debug('Purging existing session')
+        self.session.close()
+        self.session = requests.Session()
+
+        # first, get the login cookies and form data
+        login_page = self.session.get(_RESOURCE)
+
+        login_url = login_page.url
+        return_url = parse_qs(urlparse(login_url).query).get('ReturnUrl', '')
+        token = _get_verification_token(login_page.text)
+
+        # perform actual sign in
+        _LOGGER.debug('Logging in with username and password')
+        login_data = {
+            'ReturnUrl': return_url,
+            'Username': self._username,
+            'Password': self._password,
+            '__RequestVerificationToken': token,
+            'RememberLogin': True
         }
-        self._tokenquery = urllib.parse.urlencode({
-            'grant_type': 'password',
-            'client_id': 'MobileApp',
-            'client_secret': 'A6E60EBF73521F57',
-            'username': username,
-            'password': password,
-        })
+        auth_page = self.session.post(login_page.url, data=login_data)
+
+        # exchange oidc params for a login cookie (automatically saved in session)
+        _LOGGER.debug('Signing in using OIDC')
+        oidc_params = _get_oidc_params(auth_page.text)
+        self.session.post(f'{_RESOURCE}/signin-oidc', data=oidc_params)
+
+        _LOGGER.debug('Login success')
+
+    def request(self, method, endpoint, _retry_count=3):
+        _LOGGER.debug(f'Request: {method} {endpoint}')
+        try:
+            target_url = _RESOURCE + endpoint
+            r = self.session.request(method, target_url)
+
+            if r.status_code == 403 or len(r.history) > 1:  # sometimes we get redirected on token expiry
+                _LOGGER.debug('Access cookie expired, triggering refresh')
+                try:
+                    self._activate_session()
+                    return self.request(method, endpoint, _retry_count)
+                except LoginError:
+                    _LOGGER.error('Login failed')
+                    raise
+
+            r.raise_for_status()
+        except requests.RequestException as e:
+            _LOGGER.info(f'HTTP Error: {e}')
+            if _retry_count == 0:
+                return None
+
+            _LOGGER.info('Retrying request')
+            return self.request(method, endpoint, _retry_count - 1)
+
+        return r
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
         self.result = {}
 
-        try:
-            response = http.client.HTTPSConnection(self._resource, timeout=10)
-            response.request('POST', '/token', body=self._tokenquery, headers=self._tokenheaders)
-            json_result = json.loads(response.getresponse().read().decode('utf-8'))
-            _LOGGER.debug('token json_response=%s', json_result)
+        _LOGGER.debug('Getting customer details')
+        json_result = self.request('GET', '/microbus/init')
 
-            if 'access_token' in json_result and 'error' not in json_result:
-                self.token = json_result['access_token']
-
-                try:
-                    response = http.client.HTTPSConnection(self._resource, timeout=10)
-                    response.request('GET', '/api/v2/meterstanden/getstanden?overeenkomstid=' + self._overeenkomst_id,
-                                     headers={'Authorization': 'Bearer ' + self.token})
-                    json_result = json.loads(response.getresponse().read().decode('utf-8'))
-                    _LOGGER.debug('getstanden json_response=%s', json_result)
-
-                    current_energy = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 1]
-                    current_gas = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 3]
-                    self.result['currentEnergyNight'] = 0 if len(current_energy) == 0 else \
-                        current_energy[0]['MeterstandenOutput'][0]['Laag']
-                    self.result['currentEnergyDay'] = 0 if len(current_energy) == 0 else \
-                        current_energy[0]['MeterstandenOutput'][0]['Hoog']
-                    self.result['currentEnergyTotal'] = 0 if len(current_energy) == 0 else \
-                        current_energy[0]['MeterstandenOutput'][0]['Hoog'] + current_energy[0]['MeterstandenOutput'][0][
-                            'Laag']
-                    self.result['currentGas'] = 0 if len(current_gas) == 0 else current_gas[0]['MeterstandenOutput'][0][
-                        'Hoog']
-                    self.result['measurementDate'] = json_result[0]['DatumInvoer']
-                except http.client.HTTPException:
-                    _LOGGER.error('Could not retrieve current numbers.')
-                    self.result = 'Could not retrieve current numbers.'
-            else:
-                if 'error_description' in json_result:
-                    error_description = json_result['error_description']
-                else:
-                    error_description = 'unknown'
-                self.result = f'Could not retrieve token ({error_description}).'
-                _LOGGER.error(self.result)
-
-        except http.client.HTTPException:
-            _LOGGER.error('Could not retrieve token.')
-            self.result = 'Could not retrieve token.'
+        # placeholders
+        self.result['currentEnergyNight'] = 0
+        self.result['currentEnergyDay'] = 0
+        self.result['currentEnergyTotal'] = 0
+        self.result['currentGas'] = 0
+        self.result['measurementDate'] = 0
