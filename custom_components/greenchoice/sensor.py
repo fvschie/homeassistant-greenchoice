@@ -22,7 +22,7 @@ CONF_USERNAME = 'username'
 CONF_PASSWORD = 'password'
 
 DEFAULT_NAME = 'Energieverbruik'
-DEFAULT_DATE_FORMAT = "%y-%m-%dT%H:%M:%S"
+DEFAULT_DATE_FORMAT = '%y-%m-%dT%H:%M:%S'
 
 ATTR_NAME = 'name'
 ATTR_UPDATE_CYCLE = 'update_cycle'
@@ -55,10 +55,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         raise PlatformNotReady
 
     sensors = [
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentGas"),
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyDay"),
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyNight"),
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyTotal")
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentGas'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyDay'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyNight'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyTotal')
     ]
     add_entities(sensors, True)
 
@@ -128,34 +128,34 @@ class GreenchoiceSensor(Entity):
         data = self._json_data.result
 
         if self._username == CONF_USERNAME or self._username is None:
-            _LOGGER.error("Need a username!")
+            _LOGGER.error('Need a username!')
         elif self._password == CONF_PASSWORD or self._password is None:
-            _LOGGER.error("Need a password!")
+            _LOGGER.error('Need a password!')
         elif self._overeenkomst_id == CONF_OVEREENKOMST_ID or self._overeenkomst_id is None:
-            _LOGGER.error("Need a overeenkomst id (see docs how to get one)!")
+            _LOGGER.error('Need a overeenkomst id (see docs how to get one)!')
 
         if data is None or self._measurement_type not in data:
             self._state = STATE_UNKNOWN
         else:
             self._state = data[self._measurement_type]
-            self._measurement_date = data["measurementDate"]
+            self._measurement_date = data['measurementDate']
 
-        if self._measurement_type == "currentEnergyNight":
+        if self._measurement_type == 'currentEnergyNight':
             self._icon = 'mdi:weather-sunset-down'
             self._name = 'currentEnergyNight'
-            self._unit_of_measurement = "kWh"
-        if self._measurement_type == "currentEnergyDay":
+            self._unit_of_measurement = 'kWh'
+        if self._measurement_type == 'currentEnergyDay':
             self._icon = 'mdi:weather-sunset-up'
             self._name = 'currentEnergyDay'
-            self._unit_of_measurement = "kWh"
-        if self._measurement_type == "currentEnergyTotal":
+            self._unit_of_measurement = 'kWh'
+        if self._measurement_type == 'currentEnergyTotal':
             self._icon = 'mdi:power-plug'
             self._name = 'currentEnergyTotal'
-            self._unit_of_measurement = "kWh"
-        if self._measurement_type == "currentGas":
+            self._unit_of_measurement = 'kWh'
+        if self._measurement_type == 'currentGas':
             self._icon = 'mdi:fire'
             self._name = 'currentGas'
-            self._unit_of_measurement = "m³"
+            self._unit_of_measurement = 'm³'
 
 
 class GreenchoiceApiData:
@@ -163,12 +163,12 @@ class GreenchoiceApiData:
         self._resource = _RESOURCE
         self._overeenkomst_id = overeenkomst_id
         self.result = {}
-        self.token = ""
+        self.token = ''
         self._tokenheaders = {
-            'Content-Type': "application/x-www-form-urlencoded",
-            'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46"
-                          "(KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
-            'Host': "app.greenchoice.nl"
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46'
+                          '(KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3',
+            'Host': 'app.greenchoice.nl'
         }
         self._tokenquery = urllib.parse.urlencode({
             'grant_type': 'password',
@@ -184,43 +184,43 @@ class GreenchoiceApiData:
 
         try:
             response = http.client.HTTPSConnection(self._resource, timeout=10)
-            response.request("POST", "/token", body=self._tokenquery, headers=self._tokenheaders)
+            response.request('POST', '/token', body=self._tokenquery, headers=self._tokenheaders)
             json_result = json.loads(response.getresponse().read().decode('utf-8'))
-            _LOGGER.debug("token json_response=%s", json_result)
+            _LOGGER.debug('token json_response=%s', json_result)
 
-            if "access_token" in json_result and "error" not in json_result:
-                self.token = json_result["access_token"]
+            if 'access_token' in json_result and 'error' not in json_result:
+                self.token = json_result['access_token']
 
                 try:
                     response = http.client.HTTPSConnection(self._resource, timeout=10)
-                    response.request("GET", "/api/v2/meterstanden/getstanden?overeenkomstid=" + self._overeenkomst_id,
-                                     headers={'Authorization': "Bearer " + self.token})
+                    response.request('GET', '/api/v2/meterstanden/getstanden?overeenkomstid=' + self._overeenkomst_id,
+                                     headers={'Authorization': 'Bearer ' + self.token})
                     json_result = json.loads(response.getresponse().read().decode('utf-8'))
-                    _LOGGER.debug("getstanden json_response=%s", json_result)
+                    _LOGGER.debug('getstanden json_response=%s', json_result)
 
                     current_energy = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 1]
                     current_gas = [x for x in json_result if x['MeterstandenOutput'][0]['Product'] == 3]
-                    self.result["currentEnergyNight"] = 0 if len(current_energy) == 0 else \
-                        current_energy[0]["MeterstandenOutput"][0]["Laag"]
-                    self.result["currentEnergyDay"] = 0 if len(current_energy) == 0 else \
-                        current_energy[0]["MeterstandenOutput"][0]["Hoog"]
-                    self.result["currentEnergyTotal"] = 0 if len(current_energy) == 0 else \
-                        current_energy[0]["MeterstandenOutput"][0]["Hoog"] + current_energy[0]["MeterstandenOutput"][0][
-                            "Laag"]
-                    self.result["currentGas"] = 0 if len(current_gas) == 0 else current_gas[0]["MeterstandenOutput"][0][
-                        "Hoog"]
-                    self.result["measurementDate"] = json_result[0]["DatumInvoer"]
+                    self.result['currentEnergyNight'] = 0 if len(current_energy) == 0 else \
+                        current_energy[0]['MeterstandenOutput'][0]['Laag']
+                    self.result['currentEnergyDay'] = 0 if len(current_energy) == 0 else \
+                        current_energy[0]['MeterstandenOutput'][0]['Hoog']
+                    self.result['currentEnergyTotal'] = 0 if len(current_energy) == 0 else \
+                        current_energy[0]['MeterstandenOutput'][0]['Hoog'] + current_energy[0]['MeterstandenOutput'][0][
+                            'Laag']
+                    self.result['currentGas'] = 0 if len(current_gas) == 0 else current_gas[0]['MeterstandenOutput'][0][
+                        'Hoog']
+                    self.result['measurementDate'] = json_result[0]['DatumInvoer']
                 except http.client.HTTPException:
-                    _LOGGER.error("Could not retrieve current numbers.")
-                    self.result = "Could not retrieve current numbers."
+                    _LOGGER.error('Could not retrieve current numbers.')
+                    self.result = 'Could not retrieve current numbers.'
             else:
-                if "error_description" in json_result:
-                    error_description = json_result["error_description"]
+                if 'error_description' in json_result:
+                    error_description = json_result['error_description']
                 else:
-                    error_description = "unknown"
-                self.result = f"Could not retrieve token ({error_description})."
+                    error_description = 'unknown'
+                self.result = f'Could not retrieve token ({error_description}).'
                 _LOGGER.error(self.result)
 
         except http.client.HTTPException:
-            _LOGGER.error("Could not retrieve token.")
-            self.result = "Could not retrieve token."
+            _LOGGER.error('Could not retrieve token.')
+            self.result = 'Could not retrieve token.'
