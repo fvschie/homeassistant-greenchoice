@@ -1,12 +1,10 @@
-import http.client
-import json
 import logging
-import bs4
+from datetime import timedelta, datetime
 from urllib.parse import urlparse, parse_qs
-import requests
-from datetime import timedelta
 
+import bs4
 import homeassistant.helpers.config_validation as cv
+import requests
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import (CONF_NAME, STATE_UNKNOWN)
@@ -33,6 +31,12 @@ ATTR_MEASUREMENT_DATE = 'date'
 ATTR_UNIT_OF_MEASUREMENT = 'unit_of_measurement'
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3600)
+MEASUREMENT_TYPES = {
+    1: 'consumption_high',
+    2: 'consumption_low',
+    3: 'return_high',
+    4: 'return_low'
+}
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -58,9 +62,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     sensors = [
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentGas'),
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyDay'),
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyNight'),
-        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentEnergyTotal')
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_consumption_high'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_consumption_low'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_high'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_low'),
     ]
     add_entities(sensors, True)
 
@@ -172,22 +177,22 @@ class GreenchoiceSensor(Entity):
             self._state = data[self._measurement_type]
             self._measurement_date = data['measurementDate']
 
-        if self._measurement_type == 'currentEnergyNight':
-            self._icon = 'mdi:weather-sunset-down'
-            self._name = 'currentEnergyNight'
-            self._unit_of_measurement = 'kWh'
-        if self._measurement_type == 'currentEnergyDay':
+        if self._measurement_type == 'energy_consumption_high':
             self._icon = 'mdi:weather-sunset-up'
-            self._name = 'currentEnergyDay'
+            self._name = 'energy_consumption_high'
             self._unit_of_measurement = 'kWh'
-        if self._measurement_type == 'currentEnergyTotal':
-            self._icon = 'mdi:power-plug'
-            self._name = 'currentEnergyTotal'
+        if self._measurement_type == 'energy_consumption_low':
+            self._icon = 'mdi:weather-sunset-down'
+            self._name = 'energy_consumption_low'
             self._unit_of_measurement = 'kWh'
-        if self._measurement_type == 'currentGas':
-            self._icon = 'mdi:fire'
-            self._name = 'currentGas'
-            self._unit_of_measurement = 'm³'
+        if self._measurement_type == 'energy_return_high':
+            self._icon = 'mdi:solar-power'
+            self._name = 'energy_return_high'
+            self._unit_of_measurement = 'kWh'
+        if self._measurement_type == 'energy_return_low':
+            self._icon = 'mdi:solar-panel'
+            self._name = 'energy_return_low'
+            self._unit_of_measurement = 'kWh'
 
 
 class GreenchoiceApiData:
@@ -235,7 +240,7 @@ class GreenchoiceApiData:
         _LOGGER.debug(f'Request: {method} {endpoint}')
         try:
             target_url = _RESOURCE + endpoint
-            r = self.session.request(method, target_url)
+            r = self.session.request(method, target_url, json=data)
 
             if r.status_code == 403 or len(r.history) > 1:  # sometimes we get redirected on token expiry
                 _LOGGER.debug('Access cookie expired, triggering refresh')
@@ -248,25 +253,47 @@ class GreenchoiceApiData:
 
             r.raise_for_status()
         except requests.RequestException as e:
-            _LOGGER.info(f'HTTP Error: {e}')
+            _LOGGER.error(f'HTTP Error: {e}')
             if _retry_count == 0:
                 return None
 
-            _LOGGER.info('Retrying request')
-            return self.request(method, endpoint, _retry_count - 1)
+            _LOGGER.debug('Retrying request')
+            return self.request(method, endpoint, data, _retry_count - 1)
 
         return r
+
+    def microbus_request(self, name, message=None):
+        if not message:
+            message = {}
+
+        payload = {
+            'name': name,
+            'message': message
+        }
+        return self.request('POST', '/microbus/request', payload)
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
         self.result = {}
 
-        _LOGGER.debug('Getting customer details')
-        json_result = self.request('GET', '/microbus/init')
+        _LOGGER.debug('Retrieving meter values')
+        meter_values_request = self.microbus_request('OpnamesOphalen')
+        if not meter_values_request:
+            _LOGGER.debug('Error while retrieving meter values!')
+            return
+
+        monthly_values = meter_values_request.json()['model']['productenOpnamesModel'][0]['opnamesJaarMaandModel']
+        current_month = sorted(monthly_values, key=lambda m: (m['jaar'], m['maand']), reverse=True)[0]
+        current_day = sorted(
+            current_month['opnames'],
+            key=lambda d: datetime.strptime(d['opnameDatum'], '%Y-%m-%dT%H:%M:%S'),
+            reverse=True
+        )[0]
+
+        for value in current_day['standen']:
+            measurement_type = MEASUREMENT_TYPES[value['telwerk']]
+            self.result['energy_' + measurement_type] = value['waarde']
 
         # placeholders
-        self.result['currentEnergyNight'] = 0
-        self.result['currentEnergyDay'] = 0
-        self.result['currentEnergyTotal'] = 0
         self.result['currentGas'] = 0
         self.result['measurementDate'] = 0
