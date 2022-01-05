@@ -231,7 +231,7 @@ class GreenchoiceApiData:
 
         _LOGGER.debug('Login success')
 
-    def request(self, method, endpoint, _retry_count=3):
+    def request(self, method, endpoint, data=None, _retry_count=3):
         _LOGGER.debug(f'Request: {method} {endpoint}')
         try:
             target_url = _RESOURCE + endpoint
@@ -241,7 +241,7 @@ class GreenchoiceApiData:
                 _LOGGER.debug('Access cookie expired, triggering refresh')
                 try:
                     self._activate_session()
-                    return self.request(method, endpoint, _retry_count)
+                    return self.request(method, endpoint, data, _retry_count)
                 except LoginError:
                     _LOGGER.error('Login failed')
                     raise
@@ -263,6 +263,8 @@ class GreenchoiceApiData:
 
         _LOGGER.debug('Getting customer details')
         json_result = self.request('GET', '/microbus/init')
+
+
 
         # placeholders
         self.result['currentEnergyNight'] = 0
