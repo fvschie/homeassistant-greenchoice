@@ -231,7 +231,7 @@ class GreenchoiceApiData:
 
         _LOGGER.debug('Login success')
 
-    def request(self, method, endpoint, data=None, _retry_count=3):
+    def request(self, method, endpoint, data=None, _retry_count=1):
         _LOGGER.debug(f'Request: {method} {endpoint}')
         try:
             target_url = _RESOURCE + endpoint
@@ -243,8 +243,8 @@ class GreenchoiceApiData:
                     self._activate_session()
                     return self.request(method, endpoint, data, _retry_count)
                 except LoginError:
-                    _LOGGER.error('Login failed')
-                    raise
+                    _LOGGER.error('Login failed! Please check your credentials and try again.')
+                    return None
 
             r.raise_for_status()
         except requests.RequestException as e:
@@ -263,8 +263,6 @@ class GreenchoiceApiData:
 
         _LOGGER.debug('Getting customer details')
         json_result = self.request('GET', '/microbus/init')
-
-
 
         # placeholders
         self.result['currentEnergyNight'] = 0
