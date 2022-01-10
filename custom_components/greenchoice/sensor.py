@@ -8,6 +8,7 @@ import requests
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import (CONF_NAME, STATE_UNKNOWN)
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
@@ -29,6 +30,7 @@ ATTR_UPDATE_CYCLE = 'update_cycle'
 ATTR_ICON = 'icon'
 ATTR_MEASUREMENT_DATE = 'date'
 ATTR_UNIT_OF_MEASUREMENT = 'unit_of_measurement'
+ATTR_STATE_CLASS = 'state_class'
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3600)
 MEASUREMENT_TYPES = {
@@ -64,8 +66,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'currentGas'),
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_consumption_high'),
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_consumption_low'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_consumption_total'),
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_high'),
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_low'),
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_total'),
     ]
     add_entities(sensors, True)
 
@@ -112,6 +116,8 @@ class GreenchoiceSensor(Entity):
         self._unit_of_measurement = None
         self._state = None
         self._icon = None
+        self._device_class = SensorDeviceClass.ENERGY
+        self._state_class = SensorStateClass.TOTAL
 
     @property
     def name(self):
@@ -139,6 +145,14 @@ class GreenchoiceSensor(Entity):
         return self._state
 
     @property
+    def device_class(self):
+        return self._device_class
+
+    @property
+    def state_class(self):
+        return self._state_class
+
+    @property
     def measurement_type(self):
         return self._measurement_type
 
@@ -155,7 +169,8 @@ class GreenchoiceSensor(Entity):
         """Return the state attributes."""
         return {
             ATTR_MEASUREMENT_DATE: self._measurement_date,
-            ATTR_UNIT_OF_MEASUREMENT: self._unit_of_measurement
+            ATTR_UNIT_OF_MEASUREMENT: self._unit_of_measurement,
+            ATTR_STATE_CLASS: self._state_class
         }
 
     def update(self):
@@ -175,21 +190,21 @@ class GreenchoiceSensor(Entity):
             self._state = STATE_UNKNOWN
         else:
             self._state = data[self._measurement_type]
-            self._measurement_date = data['measurementDate']
+            self._measurement_date = data['measurement_date']
 
         if self._measurement_type == 'energy_consumption_high':
             self._icon = 'mdi:weather-sunset-up'
             self._name = 'energy_consumption_high'
             self._unit_of_measurement = 'kWh'
-        if self._measurement_type == 'energy_consumption_low':
+        elif self._measurement_type == 'energy_consumption_low':
             self._icon = 'mdi:weather-sunset-down'
             self._name = 'energy_consumption_low'
             self._unit_of_measurement = 'kWh'
-        if self._measurement_type == 'energy_return_high':
+        elif self._measurement_type == 'energy_return_high':
             self._icon = 'mdi:solar-power'
             self._name = 'energy_return_high'
             self._unit_of_measurement = 'kWh'
-        if self._measurement_type == 'energy_return_low':
+        elif self._measurement_type == 'energy_return_low':
             self._icon = 'mdi:solar-panel'
             self._name = 'energy_return_low'
             self._unit_of_measurement = 'kWh'
@@ -294,6 +309,11 @@ class GreenchoiceApiData:
             measurement_type = MEASUREMENT_TYPES[value['telwerk']]
             self.result['energy_' + measurement_type] = value['waarde']
 
+        self.result['energy_consumption_total'] = self.result['energy_consumption_high'] + \
+            self.result['energy_consumption_low']
+        self.result['energy_return_total'] = self.result['energy_return_high'] + self.result['energy_return_low']
+
+        self.result['measurement_date'] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
+
         # placeholders
         self.result['currentGas'] = 0
-        self.result['measurementDate'] = 0
