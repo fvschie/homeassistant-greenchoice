@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import timedelta, datetime
 from urllib.parse import urlparse, parse_qs
@@ -294,10 +295,17 @@ class GreenchoiceApiData:
         _LOGGER.debug('Retrieving meter values')
         meter_values_request = self.microbus_request('OpnamesOphalen')
         if not meter_values_request:
-            _LOGGER.debug('Error while retrieving meter values!')
+            _LOGGER.error('Error while retrieving meter values!')
             return
 
-        monthly_values = meter_values_request.json()['model']['productenOpnamesModel'][0]['opnamesJaarMaandModel']
+        try:
+            monthly_values = meter_values_request.json()
+        except json.JSONDecodeError:
+            _LOGGER.error('Could not update meter values: request returned no valid JSON')
+            _LOGGER.error('Returned data: ' + meter_values_request.text)
+            return
+
+        monthly_values = monthly_values['model']['productenOpnamesModel'][0]['opnamesJaarMaandModel']
         current_month = sorted(monthly_values, key=lambda m: (m['jaar'], m['maand']), reverse=True)[0]
         current_day = sorted(
             current_month['opnames'],
