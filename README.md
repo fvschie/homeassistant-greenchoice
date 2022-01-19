@@ -6,12 +6,15 @@ This is a Home Assistant custom component (sensor) that connects to the Greencho
 The sensor will check every hour if a new reading can be retrieved but Greenchoice practically only gives us one reading a day over this API. The reading is also delayed by 1 or 2 days (this seems to vary). The sensor will give you the date of the reading as an attribute.
 
 ### Install:
-1. Search for 'greenchoice' in [HACS](https://hacs.xyz/). 
-    *OR*
-   Place the 'greenchoice' folder in your 'custom_compontents' directory if it exists or create a new one under your config directory.
-2. The Greenchoice API can theoretically have multiple contracts under one user account, so we need to figure out the ID for the contract. We will need to manually use the Greenchoice API to retrieve this using a tool like Postman.
-    1. Send a POST request to https://app.greenchoice.nl/token with the following x-www-form-urlencoded body: `grant_type=password&client_id=MobileApp&client_secret=A6E60EBF73521F57&username=[youusername]&password=[yourpassword]`. You will retrieve a token.
-    2. Now send a GET request to https://app.greenchoice.nl/api/v1/klant/getovereenkomsten with the token you've just retrieved in the header `"Authorization":"Bearer [yourtoken]"`. You will now get a list of all contracts (probably just one) and their IDs.
+
+[//]: # (1. Search for 'greenchoice' in [HACS]&#40;https://hacs.xyz/&#41;. )
+
+[//]: # (    *OR*)
+1. Place the 'greenchoice' folder in your 'custom_compontents' directory if it exists or create a new one under your config directory.
+2. The Greenchoice API can theoretically have multiple contracts under one user account, so we need to figure out the ID for the contract. We can use the script `get-overeenkomsten.py` to list all contracts for our account as follows:
+   1. Install the dependencies listed in `requirements.txt` using pip (`python3 -m pip install -u -r requirements.txt`)
+   2. Run the script using `python3 get-overeenkomsten.py` (while CD'ed into the root directory) or by double-clicking it (on Windows.)
+   3. It will ask for your username and password, after entering these your contracts will be shown.
 3. Add the component to your configuration.yaml, an example of a proper config entry:
 
 ```YAML
@@ -22,16 +25,3 @@ sensor:
     username: !secret greenchoiceuser
     overeenkomst_id: !secret greenchoicecontract
 ```
-
-### Alternative to Postman:
-2. It's possible to retrieve the greenchoice contract info using a curl command:
-    1. Get the token:
-    ```
-    curl https://app.greenchoice.nl/token -X POST -H "Content-Type: application/x-www-form-urlencoded" --data-urlencode "grant_type=password" --data-urlencode "client_id=MobileApp" --data-urlencode "client_secret=A6E60EBF73521F57" --data-urlencode "username=********" --data-urlencode "password=********"
-    ```
-    2. Get the contract info:
-    ```
-    curl https://app.greenchoice.nl/api/v1/klant/getovereenkomsten -X GET -H "Authorization: Bearer ********"
-    ```
-(Credits for this info go to eelcohn)
-    
