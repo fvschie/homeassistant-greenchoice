@@ -268,8 +268,9 @@ class GreenchoiceApiData:
                     return None
 
             r.raise_for_status()
-        except requests.RequestException as e:
+        except requests.HTTPError as e:
             _LOGGER.error(f'HTTP Error: {e}')
+            _LOGGER.error([c.name for c in self.session.cookies])
             if _retry_count == 0:
                 return None
 
