@@ -201,6 +201,10 @@ class GreenchoiceSensor(Entity):
             self._icon = 'mdi:weather-sunset-down'
             self._name = 'energy_consumption_low'
             self._unit_of_measurement = 'kWh'
+        elif self._measurement_type == 'energy_consumption_total':
+            self._icon = 'mdi:transmission-tower-export'
+            self._name = 'energy_consumption_total'
+            self._unit_of_measurement = 'kWh'
         elif self._measurement_type == 'energy_return_high':
             self._icon = 'mdi:solar-power'
             self._name = 'energy_return_high'
@@ -208,6 +212,10 @@ class GreenchoiceSensor(Entity):
         elif self._measurement_type == 'energy_return_low':
             self._icon = 'mdi:solar-panel'
             self._name = 'energy_return_low'
+            self._unit_of_measurement = 'kWh'
+        elif self._measurement_type == 'energy_return_total':
+            self._icon = 'mdi:transmission-tower-import'
+            self._name = 'energy_return_total'
             self._unit_of_measurement = 'kWh'
 
 
