@@ -70,6 +70,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_high'),
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_low'),
         GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'energy_return_total'),
+
+        GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, 'gas_consumption'),
     ]
     add_entities(sensors, True)
 
@@ -190,7 +192,7 @@ class GreenchoiceSensor(Entity):
             self._state = STATE_UNKNOWN
         else:
             self._state = data[self._measurement_type]
-            self._measurement_date = data['measurement_date']
+            self._measurement_date = data['measurement_date_electricity']
 
         if self._measurement_type == 'energy_consumption_high':
             self._icon = 'mdi:weather-sunset-up'
@@ -216,6 +218,13 @@ class GreenchoiceSensor(Entity):
             self._icon = 'mdi:transmission-tower-import'
             self._name = 'energy_return_total'
             self._unit_of_measurement = 'kWh'
+
+        elif self._measurement_type == 'gas_consumption':
+            self._measurement_date = data['measurement_date_gas']
+
+            self._icon = 'mdi:fire'
+            self._name = 'gas_consumption'
+            self._unit_of_measurement = 'm3'
 
 
 class GreenchoiceApiData:
@@ -313,23 +322,39 @@ class GreenchoiceApiData:
             _LOGGER.error('Returned data: ' + meter_values_request.text)
             return
 
-        monthly_values = monthly_values['model']['productenOpnamesModel'][0]['opnamesJaarMaandModel']
-        current_month = sorted(monthly_values, key=lambda m: (m['jaar'], m['maand']), reverse=True)[0]
+        # parse energy data
+        electricity_values = monthly_values['model']['productenOpnamesModel'][0]['opnamesJaarMaandModel']
+        current_month = sorted(electricity_values, key=lambda m: (m['jaar'], m['maand']), reverse=True)[0]
         current_day = sorted(
             current_month['opnames'],
             key=lambda d: datetime.strptime(d['opnameDatum'], '%Y-%m-%dT%H:%M:%S'),
             reverse=True
         )[0]
 
-        for value in current_day['standen']:
-            measurement_type = MEASUREMENT_TYPES[value['telwerk']]
-            self.result['energy_' + measurement_type] = value['waarde']
+        # process energy types
+        for measurement in current_day['standen']:
+            measurement_type = MEASUREMENT_TYPES[measurement['telwerk']]
+            self.result['energy_' + measurement_type] = measurement['waarde']
 
+        # total energy count
         self.result['energy_consumption_total'] = self.result['energy_consumption_high'] + \
             self.result['energy_consumption_low']
         self.result['energy_return_total'] = self.result['energy_return_high'] + self.result['energy_return_low']
 
-        self.result['measurement_date'] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
+        self.result['measurement_date_electricity'] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
 
-        # placeholders
-        self.result['currentGas'] = 0
+        # process gas
+        if monthly_values['model']['heeftGas']:
+            gas_values = monthly_values['model']['productenOpnamesModel'][1]['opnamesJaarMaandModel']
+            current_month = sorted(gas_values, key=lambda m: (m['jaar'], m['maand']), reverse=True)[0]
+            current_day = sorted(
+                current_month['opnames'],
+                key=lambda d: datetime.strptime(d['opnameDatum'], '%Y-%m-%dT%H:%M:%S'),
+                reverse=True
+            )[0]
+
+            measurement = current_day['standen'][0]
+            if measurement['telwerk'] == 5:
+                self.result['gas_consumption'] = measurement['waarde']
+
+            self.result['measurement_date_gas'] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
