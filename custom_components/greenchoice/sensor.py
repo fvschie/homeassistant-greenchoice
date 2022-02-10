@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import timedelta, datetime
 from urllib.parse import urlparse, parse_qs
@@ -8,8 +7,8 @@ import homeassistant.helpers.config_validation as cv
 import requests
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import (CONF_NAME, STATE_UNKNOWN)
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (CONF_NAME, STATE_UNKNOWN)
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
@@ -309,7 +308,7 @@ class GreenchoiceApiData:
 
         try:
             monthly_values = meter_values_request.json()
-        except json.JSONDecodeError:
+        except requests.exceptions.JSONDecoderError:
             _LOGGER.error('Could not update meter values: request returned no valid JSON')
             _LOGGER.error('Returned data: ' + meter_values_request.text)
             return
