@@ -2,6 +2,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Literal
 
+from homeassistant.components.dsmr_reader.definitions import PRICE_EUR_KWH, PRICE_EUR_M3
 from homeassistant.components.sensor import (
     DOMAIN as SENSOR_DOMAIN,
     SensorDeviceClass,
@@ -88,7 +89,32 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
     ),
-    SERVICE_TARIEVEN: ()
+    SERVICE_TARIEVEN: (
+        SensorEntityDescription(
+            key="stroom_hoog_all_in",
+            name="Levering stroom hoog tarief all-in",
+            icon="mdi:cash-plus",
+            native_unit_of_measurement=PRICE_EUR_KWH,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="stroom_laag_all_in",
+            name="Levering stroom laag tarief all-in",
+            icon="mdi:cash-minus",
+            native_unit_of_measurement=PRICE_EUR_KWH,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="gas_all_in",
+            name="Levering gas tarief all-in",
+            icon="mdi:fire",
+            native_unit_of_measurement=PRICE_EUR_M3,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+    )
 }
 
 
