@@ -48,9 +48,9 @@ class GreenchoiceError(Exception):
 class GreenchoiceApi:
 
     def __init__(self, username: str, password: str) -> None:
-        self.username = username
-        self.password = password
-        self.session = None
+        self.username: str = username
+        self.password: str = password
+        self.session: Optional[Session] = None
 
     def login(self):
         self.session = self.__get_session()
@@ -134,7 +134,7 @@ class GreenchoiceApi:
         LOGGER.debug(f'Request: {method} {endpoint}')
         try:
             target_url = API_URL + endpoint
-            r = self.session.__request(method, target_url, json=data)
+            r = self.session.request(method, target_url, json=data)
 
             if r.status_code == 403 or len(r.history) > 1:  # sometimes we get redirected on token expiry
                 LOGGER.debug('Access cookie expired, triggering refresh')
@@ -169,7 +169,7 @@ class GreenchoiceApi:
     @staticmethod
     def __get_most_recent_entries(values):
         current_month = sorted(filter(lambda v: 'opnames' in v and len(v['opnames']) > 0, values), key=lambda m: (m['jaar'], m['maand']), reverse=True)[0]
-        if not current_month or len(current_month['opnames']):
+        if not current_month or len(current_month['opnames']) == 0:
             return None
 
         return sorted(
