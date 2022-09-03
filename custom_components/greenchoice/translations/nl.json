@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "setup_overeenkomst": {
+        "title": "Greenchoice API - Overeenkomst",
+        "description": "Kies de gewenste gebruikersovereenkomst.",
+        "data": {
+          "overeenkomst_id": "Overeenkomst"
+        }
+      },
+      "user": {
+        "description": "Vul een gebruikersnaam en wachtwoord in van mijn.greenchoice.nl.",
+        "data": {
+          "username": "Gebruikersnaam",
+          "password": "Watchwoord"
+        }
+      }
+    },
+    "error": {
+      "login_failure": "Kon niet inloggen. Controleer gebruikersnaam en wachtwoord."
+    }
+  }
+}
