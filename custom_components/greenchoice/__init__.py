@@ -92,7 +92,7 @@ class GreenchoiceDataUpdateCoordinator(DataUpdateCoordinator[GreenchoiceApiData]
         try:
             api = GreenchoiceApi(self.config_entry.data[CONF_USERNAME], self.config_entry.data[CONF_PASSWORD])
             await self.hass.async_add_executor_job(api.login)
-            data = await self.hass.async_add_executor_job(api.get_update)
+            data = await self.hass.async_add_executor_job(api.get_update, int(self.config_entry.data[CONF_OVEREENKOMST_ID]))
             if data is None:
                 raise GreenchoiceError("Unable to retrieve data")
             return data
