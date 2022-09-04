@@ -19,5 +19,15 @@
     "error": {
       "login_failure": "Kon niet inloggen. Controleer gebruikersnaam en wachtwoord."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Kies hoe vaak de data ververst moet worden vanuit Greenchoice",
+        "data": {
+          "scan_interval": "Tijd tussen updates"
+        }
+      }
+    }
   }
 }

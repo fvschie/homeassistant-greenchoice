@@ -208,8 +208,14 @@ class GreenchoiceApi:
                 tarieven = {}
                 tariff_values = tariff_values_request.json()
                 tarieven['stroom_laag_all_in'] = tariff_values['stroom']['leveringLaagAllin']
+                tarieven['stroom_teruglevering_laag_all_in'] = tariff_values['stroom']['terugleveringLaagAllin']
                 tarieven['stroom_hoog_all_in'] = tariff_values['stroom']['leveringHoogAllin']
+                tarieven['stroom_teruglevering_hoog_all_in'] = tariff_values['stroom']['terugleveringHoogAllin']
+                tarieven['stroom_teruglever_vergoeding'] = tariff_values['stroom']['terugleverVergoeding']
                 tarieven['gas_all_in'] = tariff_values['gas']['leveringAllin']
+                tarieven['stroom_totale_kosten_jaar'] = tariff_values['stroom']['totaleJaarlijkseKostenIncBtw']
+                tarieven['gas_totale_kosten_jaar'] = tariff_values['gas']['totaleJaarlijkseKostenIncBtw']
+                tarieven['totale_kosten_jaar'] = tarieven['stroom_totale_kosten_jaar'] + tarieven['gas_totale_kosten_jaar']
             except requests.exceptions.JSONDecodeError:
                 tarieven = None
                 LOGGER.error('Could not update tariff values: request returned no valid JSON')
