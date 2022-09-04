@@ -19,5 +19,15 @@
     "error": {
       "login_failure": "Unable to log in. Check username and password."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Choose how often the data from Greenchoice should be refreshed",
+        "data": {
+          "scan_interval": "Time between updates"
+        }
+      }
+    }
   }
 }

@@ -7,7 +7,7 @@ from homeassistant.components.sensor import (
     PLATFORM_SCHEMA
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_NAME
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -35,7 +35,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Greenchoice Sensor from a config entry."""
 
-    scan_interval = timedelta(minutes=DEFAULT_SCAN_INTERVAL_MINUTES)
+    scan_interval = timedelta(minutes=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES))
     coordinator = GreenchoiceDataUpdateCoordinator(hass, scan_interval)
     try:
         await coordinator.async_config_entry_first_refresh()
@@ -44,6 +44,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     hass.config_entries.async_setup_platforms(entry, PLATFORMS)
     return True
@@ -67,6 +69,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             CONFIGFLOW_VERSION,
         )
         return False
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Update options."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 class GreenchoiceDataUpdateCoordinator(DataUpdateCoordinator[GreenchoiceApiData]):

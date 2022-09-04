@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Iterable
 
 from homeassistant.components.dsmr_reader.definitions import PRICE_EUR_KWH, PRICE_EUR_M3
 from homeassistant.components.sensor import (
@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (ENERGY_KILO_WATT_HOUR, VOLUME_CUBIC_METERS)
+from homeassistant.const import (ENERGY_KILO_WATT_HOUR, VOLUME_CUBIC_METERS, CURRENCY_EURO)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
@@ -83,7 +83,7 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
         SensorEntityDescription(
             key="gas_consumption",
             name="Gas consumption",
-            icon="mdi:fire",
+            icon="mdi:gas-cylinder",
             native_unit_of_measurement=VOLUME_CUBIC_METERS,
             device_class=SensorDeviceClass.GAS,
             state_class=SensorStateClass.TOTAL_INCREASING,
@@ -99,6 +99,14 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
+            key="stroom_teruglevering_hoog_all_in",
+            name="Teruglevering stroom hoog tarief all-in",
+            icon="mdi:cash-sync",
+            native_unit_of_measurement=PRICE_EUR_KWH,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
             key="stroom_laag_all_in",
             name="Levering stroom laag tarief all-in",
             icon="mdi:cash-minus",
@@ -107,12 +115,52 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
+            key="stroom_teruglevering_laag_all_in",
+            name="Teruglevering stroom laag tarief all-in",
+            icon="mdi:cash-sync",
+            native_unit_of_measurement=PRICE_EUR_KWH,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="stroom_teruglever_vergoeding",
+            name="Terugleveringvergoeding",
+            icon="mdi:cash-refund",
+            native_unit_of_measurement=PRICE_EUR_KWH,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
             key="gas_all_in",
             name="Levering gas tarief all-in",
-            icon="mdi:fire",
+            icon="mdi:gas-cylinder",
             native_unit_of_measurement=PRICE_EUR_M3,
             device_class=SensorDeviceClass.MONETARY,
             state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="stroom_totale_kosten_jaar",
+            name="Totale stroomkosten dit jaar",
+            icon="mdi:currency-eur",
+            native_unit_of_measurement=CURRENCY_EURO,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.TOTAL,
+        ),
+        SensorEntityDescription(
+            key="gas_totale_kosten_jaar",
+            name="Totale gaskosten dit jaar",
+            icon="mdi:currency-eur",
+            native_unit_of_measurement=CURRENCY_EURO,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.TOTAL,
+        ),
+        SensorEntityDescription(
+            key="totale_kosten_jaar",
+            name="Totale kosten dit jaar",
+            icon="mdi:currency-eur",
+            native_unit_of_measurement=CURRENCY_EURO,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.TOTAL,
         ),
     )
 }
@@ -123,7 +171,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Greenchoice Sensors based on a config entry."""
 
-    def create_sensor_entities(description: SensorEntityDescription, service_key: str):
+    def create_sensor_entities(description: SensorEntityDescription, service_key: str) -> Iterable[GreenchoiceSensorEntity]:
         yield GreenchoiceSensorEntity(
             coordinator=hass.data[DOMAIN][entry.entry_id],
             description=description,
@@ -168,3 +216,9 @@ class GreenchoiceSensorEntity(CoordinatorEntity, SensorEntity):
         if isinstance(value, str):
             return value.lower()
         return value
+
+    @property
+    def last_reset(self) -> datetime | None:
+        if self.state_class == SensorStateClass.TOTAL:
+            return datetime(datetime.now().year, 1, 1)
+        return None
