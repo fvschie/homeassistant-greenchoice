@@ -100,7 +100,6 @@ class GreenchoiceSensorOptionsFlowHandler(OptionsFlow):
             return self.async_create_entry(title="", data=options_data)
 
         options = list[SelectOptionDict]()
-        options.append(SelectOptionDict(value="15", label="elk kwartier"))
         options.append(SelectOptionDict(value="60", label="elk uur"))
         options.append(SelectOptionDict(value="1440", label="elke dag"))
         options.append(SelectOptionDict(value="10080", label="elke week"))
