@@ -19,14 +19,18 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN, GreenchoiceDataUpdateCoordinator
+from . import GreenchoiceDataUpdateCoordinator
 from .const import (
+    DOMAIN,
     SERVICE_METERSTAND_STROOM,
     SERVICE_METERSTAND_GAS,
     SERVICE_TARIEVEN,
     MANUFACTURER,
     SERVICES,
     MeasurementNames,
+    CONF_METERSTAND_STROOM_ENABLED,
+    CONF_METERSTAND_GAS_ENABLED,
+    CONF_TARIEVEN_ENABLED,
 )
 
 SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[SensorEntityDescription, ...]] = {
@@ -181,12 +185,21 @@ async def async_setup_entry(
             service_key=service_key
         )
 
-    async_add_entities(
-        sensor_entity
-        for service_key, service_sensors in SENSORS.items()
-        for description in service_sensors
-        for sensor_entity in create_sensor_entities(description, service_key)
-    )
+    def __add_entities(service_key: Literal["meterstand_stroom", "meterstand_gas", "tarieven"]):
+        async_add_entities(
+            sensor_entity
+            for description in SENSORS.get(service_key)
+            for sensor_entity in create_sensor_entities(description, service_key)
+        )
+
+    if entry.options[CONF_METERSTAND_STROOM_ENABLED]:
+        __add_entities(SERVICE_METERSTAND_STROOM)
+
+    if entry.options[CONF_METERSTAND_GAS_ENABLED]:
+        __add_entities(SERVICE_METERSTAND_GAS)
+
+    if entry.options[CONF_TARIEVEN_ENABLED]:
+        __add_entities(SERVICE_TARIEVEN)
 
 
 class GreenchoiceSensorEntity(CoordinatorEntity, SensorEntity):

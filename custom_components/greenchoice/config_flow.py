@@ -18,7 +18,14 @@ from . import GreenchoiceApi, GreenchoiceError, DEFAULT_SCAN_INTERVAL_MINUTES
 from .const import (
     CONF_OVEREENKOMST_ID,
     CONFIGFLOW_VERSION,
-    DOMAIN, )
+    DOMAIN,
+    CONF_METERSTAND_STROOM_ENABLED,
+    CONF_METERSTAND_GAS_ENABLED,
+    CONF_TARIEVEN_ENABLED,
+    DEFAULT_METERSTAND_STROOM_ENABLED,
+    DEFAULT_METERSTAND_GAS_ENABLED,
+    DEFAULT_TARIEVEN_ENABLED,
+)
 
 
 class GreenchoiceFlowHandler(ConfigFlow, domain=DOMAIN):
@@ -107,7 +114,12 @@ class GreenchoiceSensorOptionsFlowHandler(OptionsFlow):
         """Manage the options."""
         if user_input is not None:
             # Convert scan interval to integer
-            options_data = {CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
+            options_data = {
+                CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
+                CONF_METERSTAND_STROOM_ENABLED: user_input[CONF_METERSTAND_STROOM_ENABLED],
+                CONF_METERSTAND_GAS_ENABLED: user_input[CONF_METERSTAND_GAS_ENABLED],
+                CONF_TARIEVEN_ENABLED: user_input[CONF_TARIEVEN_ENABLED]
+            }
             return self.async_create_entry(title="", data=options_data)
 
         options = list[SelectOptionDict]()
@@ -118,7 +130,10 @@ class GreenchoiceSensorOptionsFlowHandler(OptionsFlow):
             vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=str(self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES))
-            ): SelectSelector(SelectSelectorConfig(options=options, mode=SelectSelectorMode.LIST))
+            ): SelectSelector(SelectSelectorConfig(options=options, mode=SelectSelectorMode.LIST)),
+            vol.Required(CONF_METERSTAND_STROOM_ENABLED, default=self.config_entry.options.get(CONF_METERSTAND_STROOM_ENABLED, DEFAULT_METERSTAND_STROOM_ENABLED)): bool,
+            vol.Required(CONF_METERSTAND_GAS_ENABLED, default=self.config_entry.options.get(CONF_METERSTAND_GAS_ENABLED, DEFAULT_METERSTAND_GAS_ENABLED)): bool,
+            vol.Required(CONF_TARIEVEN_ENABLED, default=self.config_entry.options.get(CONF_TARIEVEN_ENABLED, DEFAULT_TARIEVEN_ENABLED)): bool,
         })
 
         return self.async_show_form(

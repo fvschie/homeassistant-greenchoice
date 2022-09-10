@@ -12,7 +12,6 @@ CONFIGFLOW_VERSION = 1
 LOGGER = logging.getLogger(__package__)
 
 DEFAULT_NAME = 'Energieverbruik'
-DEFAULT_SCAN_INTERVAL_MINUTES = 60
 
 SERVICE_METERSTAND_STROOM = "meterstand_stroom"
 SERVICE_METERSTAND_GAS = "meterstand_gas"
@@ -58,6 +57,14 @@ MEASUREMENT_TYPES = {
     4: 'return_low'
 }
 
+DEFAULT_SCAN_INTERVAL_MINUTES = 60
+DEFAULT_METERSTAND_STROOM_ENABLED = True
+DEFAULT_METERSTAND_GAS_ENABLED = True
+DEFAULT_TARIEVEN_ENABLED = True
+
 CONF_OVEREENKOMST_ID = 'overeenkomst_id'
+CONF_METERSTAND_STROOM_ENABLED = 'meterstand_stroom_enabled'
+CONF_METERSTAND_GAS_ENABLED = 'meterstand_gas_enabled'
+CONF_TARIEVEN_ENABLED = 'tarieven_enabled'
 
 API_URL = "https://mijn.greenchoice.nl"

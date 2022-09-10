@@ -15,10 +15,13 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import (
     DOMAIN,
     CONF_OVEREENKOMST_ID,
+    CONF_METERSTAND_STROOM_ENABLED,
+    CONF_METERSTAND_GAS_ENABLED,
+    CONF_TARIEVEN_ENABLED,
     CONFIGFLOW_VERSION,
     LOGGER,
     DEFAULT_SCAN_INTERVAL_MINUTES,
-    DEFAULT_NAME
+    DEFAULT_NAME,
 )
 from .greenchoice_api import GreenchoiceApi, GreenchoiceOvereenkomst, GreenchoiceError, GreenchoiceApiData
 
@@ -99,7 +102,13 @@ class GreenchoiceDataUpdateCoordinator(DataUpdateCoordinator[GreenchoiceApiData]
         try:
             api = GreenchoiceApi(self.config_entry.data[CONF_USERNAME], self.config_entry.data[CONF_PASSWORD])
             await self.hass.async_add_executor_job(api.login)
-            data = await self.hass.async_add_executor_job(api.get_update, int(self.config_entry.data[CONF_OVEREENKOMST_ID]))
+            data = await self.hass.async_add_executor_job(
+                api.get_update,
+                int(self.config_entry.data[CONF_OVEREENKOMST_ID]),
+                self.config_entry.options[CONF_METERSTAND_STROOM_ENABLED],
+                self.config_entry.options[CONF_METERSTAND_GAS_ENABLED],
+                self.config_entry.options[CONF_TARIEVEN_ENABLED],
+            )
             if data is None:
                 raise GreenchoiceError("Unable to retrieve data")
             return data

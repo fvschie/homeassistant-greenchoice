@@ -188,28 +188,35 @@ class GreenchoiceApi:
             reverse=True
         )[0]
 
-    def get_update(self, overeenkomst_id: int) -> Optional[GreenchoiceApiData]:
-        LOGGER.debug('Retrieving meter values')
-        try:
-            monthly_values = self.__microbus_request('OpnamesOphalen')
-        except requests.exceptions.JSONDecodeError | ConnectionError:
-            LOGGER.error('Could not update meter values: request failed or returned no valid JSON', exc_info=True)
-            return
+    def get_update(self, overeenkomst_id: int, stroom_enabled: bool = True, gas_enabled: bool = True, tarieven_enabled: bool = True) -> Optional[GreenchoiceApiData]:
+        meterstand_stroom = None
+        meterstand_gas = None
+        tarieven = None
 
-        # parse energy data
-        meterstand_stroom = GreenchoiceApi.__parse_meterstand_stroom(monthly_values)
+        if stroom_enabled or gas_enabled:
+            LOGGER.debug('Retrieving meter values')
+            try:
+                monthly_values = self.__microbus_request('OpnamesOphalen')
+            except requests.exceptions.JSONDecodeError | ConnectionError:
+                LOGGER.error('Could not update meter values: request failed or returned no valid JSON', exc_info=True)
+                return
 
-        # process gas
-        meterstand_gas = GreenchoiceApi.__parse_meterstand_gas(monthly_values)
+            if stroom_enabled:
+                # parse energy data
+                meterstand_stroom = GreenchoiceApi.__parse_meterstand_stroom(monthly_values)
+            if gas_enabled:
+                # process gas
+                meterstand_gas = GreenchoiceApi.__parse_meterstand_gas(monthly_values)
 
-        try:
-            tariff_values = self.__microbus_request('GetTariefOvereenkomst', message={"overeenkomstId": overeenkomst_id})
-        except requests.exceptions.JSONDecodeError:
-            LOGGER.error('Could not update tariff values: request failed or returned no valid JSON')
-            return
+        if tarieven_enabled:
+            try:
+                tariff_values = self.__microbus_request('GetTariefOvereenkomst', message={"overeenkomstId": overeenkomst_id})
+            except requests.exceptions.JSONDecodeError:
+                LOGGER.error('Could not update tariff values: request failed or returned no valid JSON')
+                return
 
-        # process tarieven
-        tarieven = GreenchoiceApi.__parse_tarieven(tariff_values)
+            # process tarieven
+            tarieven = GreenchoiceApi.__parse_tarieven(tariff_values)
         return GreenchoiceApiData(meterstand_stroom, meterstand_gas, tarieven)
 
     @staticmethod
