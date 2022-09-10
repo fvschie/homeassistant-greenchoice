@@ -1,5 +1,12 @@
 {
   "config": {
+    "abort": {
+      "already_configured": "Already configured with this contract ID.",
+      "no_available_contracts": "No available contracts. Has it already been configured?"
+    },
+    "error": {
+      "login_failure": "Unable to log in. Check username and password."
+    },
     "step": {
       "setup_overeenkomst": {
         "title": "Greenchoice API - Contract",
@@ -11,13 +18,10 @@
       "user": {
         "description": "Enter a username and password for mijn.greenchoice.nl.",
         "data": {
-          "username": "Gebruikersnaam",
-          "password": "Watchwoord"
+          "username": "Username",
+          "password": "Password"
         }
       }
-    },
-    "error": {
-      "login_failure": "Unable to log in. Check username and password."
     }
   },
   "options": {

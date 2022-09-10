@@ -1,31 +1,35 @@
 {
   "config": {
+    "abort": {
+      "already_configured": "Already configured with this contract ID.",
+      "no_available_contracts": "No available contracts. Has it already been configured?"
+    },
+    "error": {
+      "login_failure": "Unable to log in. Check username and password."
+    },
     "step": {
       "setup_overeenkomst": {
-        "title": "Greenchoice API - Overeenkomst",
-        "description": "Kies de gewenste gebruikersovereenkomst.",
+        "title": "Greenchoice API - Contract",
+        "description": "Choose the desired contract.",
         "data": {
-          "overeenkomst_id": "Overeenkomst"
+          "overeenkomst_id": "Contract"
         }
       },
       "user": {
-        "description": "Vul een gebruikersnaam en wachtwoord in van mijn.greenchoice.nl.",
+        "description": "Enter a username and password for mijn.greenchoice.nl.",
         "data": {
-          "username": "Gebruikersnaam",
-          "password": "Watchwoord"
+          "username": "Username",
+          "password": "Password"
         }
       }
-    },
-    "error": {
-      "login_failure": "Kon niet inloggen. Controleer gebruikersnaam en wachtwoord."
     }
   },
-   "options": {
+  "options": {
     "step": {
       "init": {
-        "description": "Kies hoe vaak de data ververst moet worden vanuit Greenchoice",
+        "description": "Choose how often the data from Greenchoice should be refreshed",
         "data": {
-          "scan_interval": "Tijd tussen updates"
+          "scan_interval": "Time between updates"
         }
       }
     }

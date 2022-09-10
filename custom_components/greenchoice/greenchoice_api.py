@@ -134,11 +134,7 @@ class GreenchoiceApi:
             raise (GreenchoiceError(error))
 
         addresses = customer["adressen"]
-        return list(map(lambda address: GreenchoiceOvereenkomst(
-            address.get("postcode", ""),
-            address.get("huisnummer", None),
-            address.get("plaats").capitalize(),
-            address["overeenkomstId"]), addresses))
+        return [GreenchoiceOvereenkomst(address.get("postcode", ""), address.get("huisnummer", None), address.get("plaats").capitalize(), address["overeenkomstId"]) for address in addresses]
 
     def __request(self, method, endpoint, data=None, _retry_count=1):
         LOGGER.debug(f'Request: {method} {endpoint}')

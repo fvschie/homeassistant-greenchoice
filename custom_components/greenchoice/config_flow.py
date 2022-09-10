@@ -71,12 +71,23 @@ class GreenchoiceFlowHandler(ConfigFlow, domain=DOMAIN):
         print(f"Checking if we have user input: {user_input}")
         if user_input is not None:
             self.data[CONF_OVEREENKOMST_ID] = user_input[CONF_OVEREENKOMST_ID]
-            return self.async_create_entry(title="Greenchoice API", data=self.data)
+            await self.async_set_unique_id(user_input[CONF_OVEREENKOMST_ID])
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(title=f"Greenchoice ({user_input[CONF_OVEREENKOMST_ID]})", data=self.data)
 
         overeenkomsten = await self.hass.async_add_executor_job(self.api.get_overeenkomsten)
         options = list[SelectOptionDict]()
+
+        existing_configurations = [int(config_entry.data[CONF_OVEREENKOMST_ID]) for config_entry in self.hass.config_entries.async_entries(self.handler)]
+
         for overeenkomst in overeenkomsten:
+            if overeenkomst.overeenkomst_id in existing_configurations:
+                continue
             options.append(SelectOptionDict(value=str(overeenkomst.overeenkomst_id), label=str(overeenkomst)))
+
+        if not len(options):
+            return self.async_abort(reason="no_available_contracts")
+
         schema = vol.Schema({
             vol.Required(CONF_OVEREENKOMST_ID): SelectSelector(SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN))
         })
