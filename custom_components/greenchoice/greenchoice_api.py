@@ -6,7 +6,15 @@ import bs4
 import requests
 from requests import Session
 
-from .const import API_URL, LOGGER, MEASUREMENT_TYPES, SERVICE_METERSTAND_STROOM, SERVICE_METERSTAND_GAS, SERVICE_TARIEVEN
+from .const import (
+    API_URL,
+    LOGGER,
+    MEASUREMENT_TYPES,
+    SERVICE_METERSTAND_STROOM,
+    SERVICE_METERSTAND_GAS,
+    SERVICE_TARIEVEN,
+    MeasurementNames
+)
 
 
 class GreenchoiceOvereenkomst:
@@ -29,8 +37,10 @@ class GreenchoiceOvereenkomst:
 
 
 class GreenchoiceApiData:
+    class Measurement(Dict[MeasurementNames, float | datetime]):
+        pass
 
-    def __init__(self, meterstand_stroom: Dict, meterstand_gas: Dict, tarieven: Dict) -> None:
+    def __init__(self, meterstand_stroom: Measurement, meterstand_gas: Measurement, tarieven: Measurement) -> None:
         self.meterstand_stroom = meterstand_stroom
         self.meterstand_gas = meterstand_gas
         self.tarieven = tarieven
@@ -164,7 +174,11 @@ class GreenchoiceApi:
             'name': name,
             'message': message
         }
-        return self.__request('POST', '/microbus/request', payload)
+        response = self.__request('POST', '/microbus/request', payload)
+        if not response:
+            raise ConnectionError
+
+        return response.json()
 
     @staticmethod
     def __get_most_recent_entries(values):
@@ -180,16 +194,10 @@ class GreenchoiceApi:
 
     def get_update(self, overeenkomst_id: int) -> Optional[GreenchoiceApiData]:
         LOGGER.debug('Retrieving meter values')
-        meter_values_request = self.__microbus_request('OpnamesOphalen')
-        if not meter_values_request:
-            LOGGER.error('Error while retrieving meter values!')
-            return
-
         try:
-            monthly_values = meter_values_request.json()
-        except requests.exceptions.JSONDecodeError:
-            LOGGER.error('Could not update meter values: request returned no valid JSON')
-            LOGGER.error('Returned data: ' + meter_values_request.text)
+            monthly_values = self.__microbus_request('OpnamesOphalen')
+        except requests.exceptions.JSONDecodeError | ConnectionError:
+            LOGGER.error('Could not update meter values: request failed or returned no valid JSON', exc_info=True)
             return
 
         # parse energy data
@@ -198,33 +206,18 @@ class GreenchoiceApi:
         # process gas
         meterstand_gas = GreenchoiceApi.__parse_meterstand_gas(monthly_values)
 
-        # process tarieven
-        tariff_values_request = self.__microbus_request('GetTariefOvereenkomst', message={"overeenkomstId": overeenkomst_id})
-        if not tariff_values_request:
-            LOGGER.error("Error while retrieving tariff values")
-            tarieven = None
-        else:
-            try:
-                tarieven = {}
-                tariff_values = tariff_values_request.json()
-                tarieven['stroom_laag_all_in'] = tariff_values['stroom']['leveringLaagAllin']
-                tarieven['stroom_teruglevering_laag_all_in'] = tariff_values['stroom']['terugleveringLaagAllin']
-                tarieven['stroom_hoog_all_in'] = tariff_values['stroom']['leveringHoogAllin']
-                tarieven['stroom_teruglevering_hoog_all_in'] = tariff_values['stroom']['terugleveringHoogAllin']
-                tarieven['stroom_teruglever_vergoeding'] = tariff_values['stroom']['terugleverVergoeding']
-                tarieven['gas_all_in'] = tariff_values['gas']['leveringAllin']
-                tarieven['stroom_totale_kosten_jaar'] = tariff_values['stroom']['totaleJaarlijkseKostenIncBtw']
-                tarieven['gas_totale_kosten_jaar'] = tariff_values['gas']['totaleJaarlijkseKostenIncBtw']
-                tarieven['totale_kosten_jaar'] = tarieven['stroom_totale_kosten_jaar'] + tarieven['gas_totale_kosten_jaar']
-            except requests.exceptions.JSONDecodeError:
-                tarieven = None
-                LOGGER.error('Could not update tariff values: request returned no valid JSON')
-                LOGGER.error('Returned data: ' + tariff_values_request.text)
+        try:
+            tariff_values = self.__microbus_request('GetTariefOvereenkomst', message={"overeenkomstId": overeenkomst_id})
+        except requests.exceptions.JSONDecodeError:
+            LOGGER.error('Could not update tariff values: request failed or returned no valid JSON')
+            return
 
+        # process tarieven
+        tarieven = GreenchoiceApi.__parse_tarieven(tariff_values)
         return GreenchoiceApiData(meterstand_stroom, meterstand_gas, tarieven)
 
     @staticmethod
-    def __parse_meterstand_stroom(monthly_values: dict):
+    def __parse_meterstand_stroom(monthly_values: dict) -> Optional[GreenchoiceApiData.Measurement]:
         if not monthly_values['model']['heeftStroom']:
             LOGGER.info("Not parsing electricity meter, contract doesn't have electricity")
             return None
@@ -233,23 +226,31 @@ class GreenchoiceApi:
         current_day = GreenchoiceApi.__get_most_recent_entries(electricity_values)
         if current_day is None:
             LOGGER.error('Could not update meter values: No current values for electricity found')
-            return
+            return None
 
-        meterstand_stroom = {}
+        meterstand_stroom = GreenchoiceApiData.Measurement()
         for measurement in current_day['standen']:
             measurement_type = MEASUREMENT_TYPES[measurement['telwerk']]
-            meterstand_stroom['energy_' + measurement_type] = measurement['waarde']
+            match measurement_type:
+                case 'consumption_high':
+                    meterstand_stroom[MeasurementNames.ENERGY_HIGH_IN] = measurement['waarde']
+                case 'consumption_low':
+                    meterstand_stroom[MeasurementNames.ENERGY_LOW_IN] = measurement['waarde']
+                case 'return_high':
+                    meterstand_stroom[MeasurementNames.ENERGY_HIGH_OUT] = measurement['waarde']
+                case 'return_low':
+                    meterstand_stroom[MeasurementNames.ENERGY_LOW_OUT] = measurement['waarde']
 
-        meterstand_stroom['energy_consumption_total'] = meterstand_stroom['energy_consumption_high'] + meterstand_stroom['energy_consumption_low']
-        meterstand_stroom['energy_return_total'] = meterstand_stroom['energy_return_high'] + meterstand_stroom['energy_return_low']
+        meterstand_stroom[MeasurementNames.ENERGY_TOTAL_IN] = meterstand_stroom[MeasurementNames.ENERGY_HIGH_IN] + meterstand_stroom[MeasurementNames.ENERGY_LOW_IN]
+        meterstand_stroom[MeasurementNames.ENERGY_TOTAL_OUT] = meterstand_stroom[MeasurementNames.ENERGY_HIGH_OUT] + meterstand_stroom[MeasurementNames.ENERGY_LOW_OUT]
 
-        meterstand_stroom['measurement_date_electricity'] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
+        meterstand_stroom[MeasurementNames.ENERGY_MEASUREMENT_DATE] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
         return meterstand_stroom
 
     @staticmethod
-    def __parse_meterstand_gas(monthly_values: dict) -> Optional[dict]:
+    def __parse_meterstand_gas(monthly_values: dict) -> Optional[GreenchoiceApiData.Measurement]:
         if not monthly_values['model']['heeftGas']:
-            LOGGER.info("Not parsing gas meter, contract doesn't have electricity")
+            LOGGER.info("Not parsing gas meter, contract doesn't have gas")
             return None
 
         gas_values = monthly_values['model']['productenOpnamesModel'][1]['opnamesJaarMaandModel']
@@ -258,10 +259,24 @@ class GreenchoiceApi:
             LOGGER.error('Could not update meter values: No current values for gas found')
             return None
 
-        meterstand_gas = {}
+        meterstand_gas = GreenchoiceApiData.Measurement()
         measurement = current_day['standen'][0]
         if measurement['telwerk'] == 5:
-            meterstand_gas['gas_consumption'] = measurement['waarde']
+            meterstand_gas[MeasurementNames.GAS_IN] = measurement['waarde']
 
-        meterstand_gas['measurement_date_gas'] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
+        meterstand_gas[MeasurementNames.GAS_MEASUREMENT_DATE] = datetime.strptime(current_day['opnameDatum'], '%Y-%m-%dT%H:%M:%S')
         return meterstand_gas
+
+    @staticmethod
+    def __parse_tarieven(tariff_values: dict) -> GreenchoiceApiData.Measurement:
+        tarieven = GreenchoiceApiData.Measurement()
+        tarieven[MeasurementNames.PRICE_ENERGY_LOW_IN] = tariff_values['stroom']['leveringLaagAllin']
+        tarieven[MeasurementNames.PRICE_ENERGY_LOW_OUT] = tariff_values['stroom']['terugleveringLaagAllin']
+        tarieven[MeasurementNames.PRICE_ENERGY_HIGH_IN] = tariff_values['stroom']['leveringHoogAllin']
+        tarieven[MeasurementNames.PRICE_ENERGY_HIGH_OUT] = tariff_values['stroom']['terugleveringHoogAllin']
+        tarieven[MeasurementNames.PRICE_ENERGY_SELL_PRICE] = tariff_values['stroom']['terugleverVergoeding']
+        tarieven[MeasurementNames.PRICE_GAS_IN] = tariff_values['gas']['leveringAllin']
+        tarieven[MeasurementNames.COST_ENERGY_YEARLY] = tariff_values['stroom']['totaleJaarlijkseKostenIncBtw']
+        tarieven[MeasurementNames.COST_GAS_YEARLY] = tariff_values['gas']['totaleJaarlijkseKostenIncBtw']
+        tarieven[MeasurementNames.COST_TOTAL_YEARLY] = tarieven[MeasurementNames.COST_ENERGY_YEARLY] + tarieven[MeasurementNames.COST_GAS_YEARLY]
+        return tarieven

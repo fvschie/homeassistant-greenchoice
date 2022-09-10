@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Final, Dict
 
+from homeassistant.backports.enum import StrEnum
+
 DOMAIN: Final = "greenchoice"
 
 MANUFACTURER: Final = "Greenchoice"
@@ -16,11 +18,38 @@ SERVICE_METERSTAND_STROOM = "meterstand_stroom"
 SERVICE_METERSTAND_GAS = "meterstand_gas"
 SERVICE_TARIEVEN = "tarieven"
 
-SERVICES: Dict[str,str] = {
+SERVICES: Dict[str, str] = {
     SERVICE_METERSTAND_STROOM: "Greenchoice meterstanden stroom",
     SERVICE_METERSTAND_GAS: "Greenchoice meterstanden gas",
     SERVICE_TARIEVEN: "Greenchoice tarieven"
 }
+
+
+class MeasurementNames(StrEnum):
+    # Meterstanden stroom
+    ENERGY_HIGH_IN = 'stroom_hoog_in'
+    ENERGY_HIGH_OUT = 'stroom_hoog_uit'
+    ENERGY_LOW_IN = 'stroom_laag_in'
+    ENERGY_LOW_OUT = 'stroom_laag_uit'
+    ENERGY_TOTAL_IN = 'stroom_totaal_in'
+    ENERGY_TOTAL_OUT = 'stroom_totaal_uit'
+    ENERGY_MEASUREMENT_DATE = 'measurement_date_electricity'
+
+    # Meterstanden gas
+    GAS_IN = 'gas_in'
+    GAS_MEASUREMENT_DATE = 'measurement_date_gas'
+
+    # Tariffs and costs
+    PRICE_ENERGY_LOW_IN = 'tarief_stroom_laag_in'
+    PRICE_ENERGY_LOW_OUT = 'tarief_stroom_laag_uit'
+    PRICE_ENERGY_HIGH_IN = 'tarief_stroom_hoog_in'
+    PRICE_ENERGY_HIGH_OUT = 'tarief_stroom_hoog_uit'
+    PRICE_ENERGY_SELL_PRICE = 'tarief_stroom_terugleververgoeding'
+    PRICE_GAS_IN = 'tarief_gas_in'
+    COST_ENERGY_YEARLY = 'kosten_stroom_jaar'
+    COST_GAS_YEARLY = 'kosten_gas_jaar'
+    COST_TOTAL_YEARLY = 'kosten_totaal_jaar'
+
 
 MEASUREMENT_TYPES = {
     1: 'consumption_high',

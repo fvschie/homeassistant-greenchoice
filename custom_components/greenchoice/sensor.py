@@ -26,53 +26,54 @@ from .const import (
     SERVICE_TARIEVEN,
     MANUFACTURER,
     SERVICES,
+    MeasurementNames,
 )
 
 SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[SensorEntityDescription, ...]] = {
     SERVICE_METERSTAND_STROOM: (
         SensorEntityDescription(
-            key="energy_consumption_high",
-            name="Energy consumption high tariff",
+            key=MeasurementNames.ENERGY_HIGH_IN,
+            name="Energie levering hoog tarief",
             icon="mdi:weather-sunset-up",
             native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
             device_class=SensorDeviceClass.ENERGY,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         SensorEntityDescription(
-            key="energy_consumption_low",
-            name="Energy consumption low tariff",
+            key=MeasurementNames.ENERGY_LOW_IN,
+            name="Energie levering laag tarief",
             icon="mdi:weather-sunset-down",
             native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
             device_class=SensorDeviceClass.ENERGY,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         SensorEntityDescription(
-            key="energy_consumption_total",
-            name="Total energy consumption",
+            key=MeasurementNames.ENERGY_TOTAL_IN,
+            name="Energie levering totaal",
             icon="mdi:transmission-tower-export",
             native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
             device_class=SensorDeviceClass.ENERGY,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         SensorEntityDescription(
-            key="energy_return_high",
-            name="Energy return high tariff",
+            key=MeasurementNames.ENERGY_HIGH_OUT,
+            name="Energie teruglevering hoog tarief",
             icon="mdi:solar-power",
             native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
             device_class=SensorDeviceClass.ENERGY,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         SensorEntityDescription(
-            key="energy_return_low",
-            name="Energy return low tariff",
+            key=MeasurementNames.ENERGY_LOW_OUT,
+            name="Energie teruglevering laag tarief",
             icon="mdi:solar-power",
             native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
             device_class=SensorDeviceClass.ENERGY,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         SensorEntityDescription(
-            key="energy_return_total",
-            name="Total energy return",
+            key=MeasurementNames.ENERGY_TOTAL_OUT,
+            name="Energie teruglevering totaal",
             icon="mdi:transmission-tower-import",
             native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
             device_class=SensorDeviceClass.ENERGY,
@@ -81,8 +82,8 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
     ),
     SERVICE_METERSTAND_GAS: (
         SensorEntityDescription(
-            key="gas_consumption",
-            name="Gas consumption",
+            key=MeasurementNames.GAS_IN,
+            name="Gas consumptie",
             icon="mdi:gas-cylinder",
             native_unit_of_measurement=VOLUME_CUBIC_METERS,
             device_class=SensorDeviceClass.GAS,
@@ -91,55 +92,55 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
     ),
     SERVICE_TARIEVEN: (
         SensorEntityDescription(
-            key="stroom_hoog_all_in",
-            name="Levering stroom hoog tarief all-in",
+            key=MeasurementNames.PRICE_ENERGY_HIGH_IN,
+            name="Tarief energie levering hoog tarief",
             icon="mdi:cash-plus",
             native_unit_of_measurement=PRICE_EUR_KWH,
             device_class=SensorDeviceClass.MONETARY,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
-            key="stroom_teruglevering_hoog_all_in",
-            name="Teruglevering stroom hoog tarief all-in",
-            icon="mdi:cash-sync",
-            native_unit_of_measurement=PRICE_EUR_KWH,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key="stroom_laag_all_in",
-            name="Levering stroom laag tarief all-in",
+            key=MeasurementNames.PRICE_ENERGY_LOW_IN,
+            name="Tarief energie levering laag tarief",
             icon="mdi:cash-minus",
             native_unit_of_measurement=PRICE_EUR_KWH,
             device_class=SensorDeviceClass.MONETARY,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
-            key="stroom_teruglevering_laag_all_in",
-            name="Teruglevering stroom laag tarief all-in",
+            key=MeasurementNames.PRICE_ENERGY_HIGH_OUT,
+            name="Tarief energie teruglevering hoog tarief",
             icon="mdi:cash-sync",
             native_unit_of_measurement=PRICE_EUR_KWH,
             device_class=SensorDeviceClass.MONETARY,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
-            key="stroom_teruglever_vergoeding",
-            name="Terugleveringvergoeding",
+            key=MeasurementNames.PRICE_ENERGY_LOW_OUT,
+            name="Tarief energie teruglevering laag tarief",
+            icon="mdi:cash-sync",
+            native_unit_of_measurement=PRICE_EUR_KWH,
+            device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key=MeasurementNames.PRICE_ENERGY_SELL_PRICE,
+            name="Tarief terugleververgoeding ",
             icon="mdi:cash-refund",
             native_unit_of_measurement=PRICE_EUR_KWH,
             device_class=SensorDeviceClass.MONETARY,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
-            key="gas_all_in",
-            name="Levering gas tarief all-in",
+            key=MeasurementNames.PRICE_GAS_IN,
+            name="Tarief gas levering",
             icon="mdi:gas-cylinder",
             native_unit_of_measurement=PRICE_EUR_M3,
             device_class=SensorDeviceClass.MONETARY,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         SensorEntityDescription(
-            key="stroom_totale_kosten_jaar",
+            key=MeasurementNames.COST_ENERGY_YEARLY,
             name="Totale stroomkosten dit jaar",
             icon="mdi:currency-eur",
             native_unit_of_measurement=CURRENCY_EURO,
@@ -147,7 +148,7 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
             state_class=SensorStateClass.TOTAL,
         ),
         SensorEntityDescription(
-            key="gas_totale_kosten_jaar",
+            key=MeasurementNames.COST_GAS_YEARLY,
             name="Totale gaskosten dit jaar",
             icon="mdi:currency-eur",
             native_unit_of_measurement=CURRENCY_EURO,
@@ -155,7 +156,7 @@ SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[
             state_class=SensorStateClass.TOTAL,
         ),
         SensorEntityDescription(
-            key="totale_kosten_jaar",
+            key=MeasurementNames.COST_TOTAL_YEARLY,
             name="Totale kosten dit jaar",
             icon="mdi:currency-eur",
             native_unit_of_measurement=CURRENCY_EURO,
@@ -172,10 +173,11 @@ async def async_setup_entry(
     """Set up Greenchoice Sensors based on a config entry."""
 
     def create_sensor_entities(description: SensorEntityDescription, service_key: str) -> Iterable[GreenchoiceSensorEntity]:
+        overeenkomst_id = entry.data['overeenkomst_id']
         yield GreenchoiceSensorEntity(
             coordinator=hass.data[DOMAIN][entry.entry_id],
             description=description,
-            name=entry.title,
+            name=f"{DOMAIN}_{overeenkomst_id}",
             service_key=service_key
         )
 
