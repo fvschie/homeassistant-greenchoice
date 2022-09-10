@@ -29,7 +29,10 @@
       "init": {
         "description": "Kies hoe vaak de data ververst moet worden vanuit Greenchoice",
         "data": {
-          "scan_interval": "Tijd tussen updates"
+          "scan_interval": "Tijd tussen updates",
+          "meterstand_stroom_enabled": "Update meterstand stroom",
+          "meterstand_gas_enabled": "Update meterstand gas",
+          "tarieven_enabled": "Update tarieven"
         }
       }
     }
