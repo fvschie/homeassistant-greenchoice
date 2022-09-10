@@ -1,5 +1,12 @@
 {
   "config": {
+    "abort": {
+      "already_configured": "Al geconfigureerd met dit contract ID.",
+      "no_available_contracts": "Geen beschikbare contracten. Is deze al gesteld?"
+    },
+    "error": {
+      "login_failure": "[%key:common::config_flow::error::invalid_auth%]"
+    },
     "step": {
       "setup_overeenkomst": {
         "title": "Greenchoice API - Overeenkomst",
@@ -12,12 +19,9 @@
         "description": "Vul een gebruikersnaam en wachtwoord in van mijn.greenchoice.nl.",
         "data": {
           "username": "Gebruikersnaam",
-          "password": "Watchwoord"
+          "password": "Wachtwoord"
         }
       }
-    },
-    "error": {
-      "login_failure": "Kon niet inloggen. Controleer gebruikersnaam en wachtwoord."
     }
   },
   "options": {
