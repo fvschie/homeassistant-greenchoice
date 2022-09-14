@@ -29,7 +29,10 @@
       "init": {
         "description": "Choose how often the data from Greenchoice should be refreshed",
         "data": {
-          "scan_interval": "Time between updates"
+          "scan_interval": "Time between updates",
+          "meterstand_stroom_enabled": "Update meters for energy",
+          "meterstand_gas_enabled": "Update meters for gas",
+          "tarieven_enabled": "Update tariffs"
         }
       }
     }
