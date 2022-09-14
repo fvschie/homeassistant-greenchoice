@@ -36,6 +36,12 @@ class GreenchoiceOvereenkomst:
         return f"{self.__class__.__name__}('{self.postcode}',{self.huisnummer},'{self.city}',{self.overeenkomst_id})"
 
 
+class GreenchoiceProducts:
+    def __init__(self, address: dict) -> None:
+        self.has_power = address["heeftStroomLevering"]
+        self.has_gas = address["heeftGasLevering"]
+
+
 class GreenchoiceApiData:
     class Measurement(Dict[MeasurementNames, float | datetime]):
         pass
@@ -122,8 +128,7 @@ class GreenchoiceApi:
         sess.post("https://mijn.greenchoice.nl/signin-oidc", data=oidc_params)
         return sess
 
-    def get_overeenkomsten(self) -> List[GreenchoiceOvereenkomst]:
-        # retrieve overeenkomsten
+    def __get_addresses(self) -> List[Dict]:
         init_data = self.session.get("https://mijn.greenchoice.nl/microbus/init").json()
         customer_number = init_data["profile"]["voorkeursOvereenkomst"]["klantnummer"]
         customer = next((customer for customer in init_data["klantgegevens"]
@@ -133,8 +138,18 @@ class GreenchoiceApi:
             LOGGER.error(error)
             raise (GreenchoiceError(error))
 
-        addresses = customer["adressen"]
+        return list(filter(lambda addr: addr['heeftLevering'], customer["adressen"]))
+
+    def get_overeenkomsten(self) -> List[GreenchoiceOvereenkomst]:
+        addresses = self.__get_addresses()
         return [GreenchoiceOvereenkomst(address.get("postcode", ""), address.get("huisnummer", None), address.get("plaats").capitalize(), address["overeenkomstId"]) for address in addresses]
+
+    def get_products(self, overeenkomst_id: int) -> GreenchoiceProducts:
+        addresses = self.__get_addresses()
+        address = next((address for address in addresses if address['overeenkomstId'] == overeenkomst_id), None)
+        if address is None:
+            raise GreenchoiceError(f"Unable to find overeenkomst '{overeenkomst_id}'")
+        return GreenchoiceProducts(address)
 
     def __request(self, method, endpoint, data=None, _retry_count=1):
         LOGGER.debug(f'Request: {method} {endpoint}')
@@ -193,7 +208,9 @@ class GreenchoiceApi:
         meterstand_gas = None
         tarieven = None
 
-        if stroom_enabled or gas_enabled:
+        products = self.get_products(overeenkomst_id)
+
+        if (products.has_power and stroom_enabled) or (products.has_gas and gas_enabled):
             LOGGER.debug('Retrieving meter values')
             try:
                 monthly_values = self.__microbus_request('OpnamesOphalen')
@@ -201,10 +218,10 @@ class GreenchoiceApi:
                 LOGGER.error('Could not update meter values: request failed or returned no valid JSON', exc_info=True)
                 return
 
-            if stroom_enabled:
+            if products.has_power and stroom_enabled:
                 # parse energy data
                 meterstand_stroom = GreenchoiceApi.__parse_meterstand_stroom(monthly_values)
-            if gas_enabled:
+            if products.has_gas and gas_enabled:
                 # process gas
                 meterstand_gas = GreenchoiceApi.__parse_meterstand_gas(monthly_values)
 
@@ -216,7 +233,7 @@ class GreenchoiceApi:
                 return
 
             # process tarieven
-            tarieven = GreenchoiceApi.__parse_tarieven(tariff_values)
+            tarieven = GreenchoiceApi.__parse_tarieven(tariff_values, products)
         return GreenchoiceApiData(meterstand_stroom, meterstand_gas, tarieven)
 
     @staticmethod
@@ -271,15 +288,18 @@ class GreenchoiceApi:
         return meterstand_gas
 
     @staticmethod
-    def __parse_tarieven(tariff_values: dict) -> GreenchoiceApiData.Measurement:
+    def __parse_tarieven(tariff_values: dict, products: GreenchoiceProducts) -> GreenchoiceApiData.Measurement:
         tarieven = GreenchoiceApiData.Measurement()
-        tarieven[MeasurementNames.PRICE_ENERGY_LOW_IN] = tariff_values['stroom']['leveringLaagAllin']
-        tarieven[MeasurementNames.PRICE_ENERGY_LOW_OUT] = tariff_values['stroom']['terugleveringLaagAllin']
-        tarieven[MeasurementNames.PRICE_ENERGY_HIGH_IN] = tariff_values['stroom']['leveringHoogAllin']
-        tarieven[MeasurementNames.PRICE_ENERGY_HIGH_OUT] = tariff_values['stroom']['terugleveringHoogAllin']
-        tarieven[MeasurementNames.PRICE_ENERGY_SELL_PRICE] = tariff_values['stroom']['terugleverVergoeding']
-        tarieven[MeasurementNames.PRICE_GAS_IN] = tariff_values['gas']['leveringAllin']
-        tarieven[MeasurementNames.COST_ENERGY_YEARLY] = tariff_values['stroom']['totaleJaarlijkseKostenIncBtw']
-        tarieven[MeasurementNames.COST_GAS_YEARLY] = tariff_values['gas']['totaleJaarlijkseKostenIncBtw']
-        tarieven[MeasurementNames.COST_TOTAL_YEARLY] = tarieven[MeasurementNames.COST_ENERGY_YEARLY] + tarieven[MeasurementNames.COST_GAS_YEARLY]
+        if products.has_power:
+            tarieven[MeasurementNames.PRICE_ENERGY_LOW_IN] = tariff_values['stroom']['leveringLaagAllin']
+            tarieven[MeasurementNames.PRICE_ENERGY_LOW_OUT] = tariff_values['stroom']['terugleveringLaagAllin']
+            tarieven[MeasurementNames.PRICE_ENERGY_HIGH_IN] = tariff_values['stroom']['leveringHoogAllin']
+            tarieven[MeasurementNames.PRICE_ENERGY_HIGH_OUT] = tariff_values['stroom']['terugleveringHoogAllin']
+            tarieven[MeasurementNames.PRICE_ENERGY_SELL_PRICE] = tariff_values['stroom']['terugleverVergoeding']
+            tarieven[MeasurementNames.COST_ENERGY_YEARLY] = tariff_values['stroom']['totaleJaarlijkseKostenIncBtw']
+        if products.has_gas:
+            tarieven[MeasurementNames.PRICE_GAS_IN] = tariff_values['gas']['leveringAllin']
+            tarieven[MeasurementNames.COST_GAS_YEARLY] = tariff_values['gas']['totaleJaarlijkseKostenIncBtw']
+
+        tarieven[MeasurementNames.COST_TOTAL_YEARLY] = (tarieven.get(MeasurementNames.COST_ENERGY_YEARLY) or 0) + (tarieven.get(MeasurementNames.COST_GAS_YEARLY) or 0)
         return tarieven

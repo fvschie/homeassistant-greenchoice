@@ -33,142 +33,145 @@ from .const import (
     CONF_TARIEVEN_ENABLED,
 )
 
-SENSORS: dict[Literal["meterstand_stroom", "meterstand_gas", "tarieven"], tuple[SensorEntityDescription, ...]] = {
-    SERVICE_METERSTAND_STROOM: (
-        SensorEntityDescription(
-            key=MeasurementNames.ENERGY_HIGH_IN,
-            name="Energie levering hoog tarief",
-            icon="mdi:weather-sunset-up",
-            native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-            device_class=SensorDeviceClass.ENERGY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.ENERGY_LOW_IN,
-            name="Energie levering laag tarief",
-            icon="mdi:weather-sunset-down",
-            native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-            device_class=SensorDeviceClass.ENERGY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.ENERGY_TOTAL_IN,
-            name="Energie levering totaal",
-            icon="mdi:transmission-tower-export",
-            native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-            device_class=SensorDeviceClass.ENERGY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.ENERGY_HIGH_OUT,
-            name="Energie teruglevering hoog tarief",
-            icon="mdi:solar-power",
-            native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-            device_class=SensorDeviceClass.ENERGY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.ENERGY_LOW_OUT,
-            name="Energie teruglevering laag tarief",
-            icon="mdi:solar-power",
-            native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-            device_class=SensorDeviceClass.ENERGY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.ENERGY_TOTAL_OUT,
-            name="Energie teruglevering totaal",
-            icon="mdi:transmission-tower-import",
-            native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-            device_class=SensorDeviceClass.ENERGY,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
+SENSORS_POWER: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key=MeasurementNames.ENERGY_HIGH_IN,
+        name="Energie levering hoog tarief",
+        icon="mdi:weather-sunset-up",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SERVICE_METERSTAND_GAS: (
-        SensorEntityDescription(
-            key=MeasurementNames.GAS_IN,
-            name="Gas consumptie",
-            icon="mdi:gas-cylinder",
-            native_unit_of_measurement=VOLUME_CUBIC_METERS,
-            device_class=SensorDeviceClass.GAS,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-        ),
+    SensorEntityDescription(
+        key=MeasurementNames.ENERGY_LOW_IN,
+        name="Energie levering laag tarief",
+        icon="mdi:weather-sunset-down",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SERVICE_TARIEVEN: (
-        SensorEntityDescription(
-            key=MeasurementNames.PRICE_ENERGY_HIGH_IN,
-            name="Tarief energie levering hoog tarief",
-            icon="mdi:cash-plus",
-            native_unit_of_measurement=PRICE_EUR_KWH,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.PRICE_ENERGY_LOW_IN,
-            name="Tarief energie levering laag tarief",
-            icon="mdi:cash-minus",
-            native_unit_of_measurement=PRICE_EUR_KWH,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.PRICE_ENERGY_HIGH_OUT,
-            name="Tarief energie teruglevering hoog tarief",
-            icon="mdi:cash-sync",
-            native_unit_of_measurement=PRICE_EUR_KWH,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.PRICE_ENERGY_LOW_OUT,
-            name="Tarief energie teruglevering laag tarief",
-            icon="mdi:cash-sync",
-            native_unit_of_measurement=PRICE_EUR_KWH,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.PRICE_ENERGY_SELL_PRICE,
-            name="Tarief terugleververgoeding ",
-            icon="mdi:cash-refund",
-            native_unit_of_measurement=PRICE_EUR_KWH,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.PRICE_GAS_IN,
-            name="Tarief gas levering",
-            icon="mdi:gas-cylinder",
-            native_unit_of_measurement=PRICE_EUR_M3,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.COST_ENERGY_YEARLY,
-            name="Totale stroomkosten dit jaar",
-            icon="mdi:currency-eur",
-            native_unit_of_measurement=CURRENCY_EURO,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.TOTAL,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.COST_GAS_YEARLY,
-            name="Totale gaskosten dit jaar",
-            icon="mdi:currency-eur",
-            native_unit_of_measurement=CURRENCY_EURO,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.TOTAL,
-        ),
-        SensorEntityDescription(
-            key=MeasurementNames.COST_TOTAL_YEARLY,
-            name="Totale kosten dit jaar",
-            icon="mdi:currency-eur",
-            native_unit_of_measurement=CURRENCY_EURO,
-            device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.TOTAL,
-        ),
-    )
-}
+    SensorEntityDescription(
+        key=MeasurementNames.ENERGY_TOTAL_IN,
+        name="Energie levering totaal",
+        icon="mdi:transmission-tower-export",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.ENERGY_HIGH_OUT,
+        name="Energie teruglevering hoog tarief",
+        icon="mdi:solar-power",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.ENERGY_LOW_OUT,
+        name="Energie teruglevering laag tarief",
+        icon="mdi:solar-power",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.ENERGY_TOTAL_OUT,
+        name="Energie teruglevering totaal",
+        icon="mdi:transmission-tower-import",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+)
+
+SENSORS_GAS: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key=MeasurementNames.GAS_IN,
+        name="Gas consumptie",
+        icon="mdi:gas-cylinder",
+        native_unit_of_measurement=VOLUME_CUBIC_METERS,
+        device_class=SensorDeviceClass.GAS,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+)
+
+SENSORS_TARIFFS_POWER: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key=MeasurementNames.PRICE_ENERGY_HIGH_IN,
+        name="Tarief energie levering hoog tarief",
+        icon="mdi:cash-plus",
+        native_unit_of_measurement=PRICE_EUR_KWH,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.PRICE_ENERGY_LOW_IN,
+        name="Tarief energie levering laag tarief",
+        icon="mdi:cash-minus",
+        native_unit_of_measurement=PRICE_EUR_KWH,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.PRICE_ENERGY_HIGH_OUT,
+        name="Tarief energie teruglevering hoog tarief",
+        icon="mdi:cash-sync",
+        native_unit_of_measurement=PRICE_EUR_KWH,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.PRICE_ENERGY_LOW_OUT,
+        name="Tarief energie teruglevering laag tarief",
+        icon="mdi:cash-sync",
+        native_unit_of_measurement=PRICE_EUR_KWH,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.PRICE_ENERGY_SELL_PRICE,
+        name="Tarief terugleververgoeding ",
+        icon="mdi:cash-refund",
+        native_unit_of_measurement=PRICE_EUR_KWH,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.COST_ENERGY_YEARLY,
+        name="Totale stroomkosten dit jaar",
+        icon="mdi:currency-eur",
+        native_unit_of_measurement=CURRENCY_EURO,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.COST_TOTAL_YEARLY,
+        name="Totale kosten dit jaar",
+        icon="mdi:currency-eur",
+        native_unit_of_measurement=CURRENCY_EURO,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+    ),
+)
+
+SENSORS_TARIFFS_GAS: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key=MeasurementNames.PRICE_GAS_IN,
+        name="Tarief gas levering",
+        icon="mdi:gas-cylinder",
+        native_unit_of_measurement=PRICE_EUR_M3,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key=MeasurementNames.COST_GAS_YEARLY,
+        name="Totale gaskosten dit jaar",
+        icon="mdi:currency-eur",
+        native_unit_of_measurement=CURRENCY_EURO,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+    ),
+)
 
 
 async def async_setup_entry(
@@ -185,21 +188,26 @@ async def async_setup_entry(
             service_key=service_key
         )
 
-    def __add_entities(service_key: Literal["meterstand_stroom", "meterstand_gas", "tarieven"]):
+    def __add_entities(sensor_list: tuple[SensorEntityDescription, ...], service_key: Literal["meterstand_stroom", "meterstand_gas", "tarieven"]):
         async_add_entities(
             sensor_entity
-            for description in SENSORS.get(service_key)
+            for description in sensor_list
             for sensor_entity in create_sensor_entities(description, service_key)
         )
 
-    if entry.options[CONF_METERSTAND_STROOM_ENABLED]:
-        __add_entities(SERVICE_METERSTAND_STROOM)
+    has_power = entry.data["has_power"]
+    has_gas = entry.data["has_gas"]
+    if has_power and entry.options[CONF_METERSTAND_STROOM_ENABLED]:
+        __add_entities(SENSORS_POWER, SERVICE_METERSTAND_STROOM)
 
-    if entry.options[CONF_METERSTAND_GAS_ENABLED]:
-        __add_entities(SERVICE_METERSTAND_GAS)
+    if has_gas and entry.options[CONF_METERSTAND_GAS_ENABLED]:
+        __add_entities(SENSORS_GAS, SERVICE_METERSTAND_GAS)
 
     if entry.options[CONF_TARIEVEN_ENABLED]:
-        __add_entities(SERVICE_TARIEVEN)
+        if has_power:
+            __add_entities(SENSORS_TARIFFS_POWER, SERVICE_TARIEVEN)
+        if has_gas:
+            __add_entities(SENSORS_TARIFFS_GAS, SERVICE_TARIEVEN)
 
 
 class GreenchoiceSensorEntity(CoordinatorEntity, SensorEntity):
