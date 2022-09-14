@@ -105,9 +105,9 @@ class GreenchoiceDataUpdateCoordinator(DataUpdateCoordinator[GreenchoiceApiData]
             data = await self.hass.async_add_executor_job(
                 api.get_update,
                 int(self.config_entry.data[CONF_OVEREENKOMST_ID]),
-                self.config_entry.options[CONF_METERSTAND_STROOM_ENABLED],
-                self.config_entry.options[CONF_METERSTAND_GAS_ENABLED],
-                self.config_entry.options[CONF_TARIEVEN_ENABLED],
+                self.config_entry.options.get(CONF_METERSTAND_STROOM_ENABLED, True),
+                self.config_entry.options.get(CONF_METERSTAND_GAS_ENABLED, True),
+                self.config_entry.options.get(CONF_TARIEVEN_ENABLED, True),
             )
             if data is None:
                 raise GreenchoiceError("Unable to retrieve data")
